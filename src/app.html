@@ -63,7 +63,10 @@
   <main class="main-content">
     <div class="content-header">
       <h3 id="pageTitle">Dashboard</h3>
-      <div class="header-actions"><span class="date-display" id="currentDate"></span></div>
+      <div class="header-actions">
+        <span class="date-display" id="currentDate"></span>
+        <span class="wis-display" id="wisClock" style="margin-left: 15px; font-weight: bold; color: #00aa66;"></span>
+      </div>
     </div>
     <div class="content-body" id="content">
       <div class="loading-spinner"><i class="fas fa-spinner fa-spin"></i><p>Memuat...</p></div>
@@ -163,13 +166,63 @@ if (document.readyState === 'loading') {
   // ============================================
   window.isTauri = !!(window.__TAURI__);
   
-  function updateCurrentDate() {
-    var d = new Date();
-    var el = document.getElementById('currentDate');
-    if (el) el.textContent = d.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  // ============================================
+  // TANGGAL HIJRIAH & JAM ISTIWAK (WIS)
+  // ============================================
+  var userCoords = { lon: 110.3695, tzOffset: 7 };
+
+  function dapatkanTanggalHijriah(date) {
+    var opsi = { day: 'numeric', month: 'long', year: 'numeric' };
+    var formatter = new Intl.DateTimeFormat('id-ID-u-ca-islamic-umalqura', opsi);
+    return formatter.format(date) + ' H';
   }
-  updateCurrentDate();
-  setInterval(updateCurrentDate, 60000);
+
+  function hitungWaktuIstiwak(date, lon, timezoneOffset) {
+    var start = new Date(date.getFullYear(), 0, 0);
+    var diff = date - start;
+    var oneDay = 1000 * 60 * 60 * 24;
+    var dayOfYear = Math.floor(diff / oneDay);
+    var B = (360 / 365) * (dayOfYear - 81);
+    var B_rad = B * (Math.PI / 180);
+    var eot = 9.87 * Math.sin(2 * B_rad) - 7.53 * Math.cos(B_rad) - 1.5 * Math.sin(B_rad);
+    var lonStandard = timezoneOffset * 15;
+    var kwd = (lonStandard - lon) * 4;
+    var totalMenitLokal = (date.getHours() * 60) + date.getMinutes() + (date.getSeconds() / 60);
+    var totalMenitIstiwak = totalMenitLokal - kwd + eot;
+    if (totalMenitIstiwak < 0) totalMenitIstiwak += 1440;
+    if (totalMenitIstiwak >= 1440) totalMenitIstiwak -= 1440;
+    var jamIstiwak = Math.floor(totalMenitIstiwak / 60);
+    var sisaMenit = totalMenitIstiwak % 60;
+    var menitIstiwak = Math.floor(sisaMenit);
+    var detikIstiwak = Math.floor((sisaMenit - menitIstiwak) * 60);
+    return String(jamIstiwak).padStart(2, '0') + ':' + String(menitIstiwak).padStart(2, '0') + ':' + String(detikIstiwak).padStart(2, '0') + ' WIS';
+  }
+
+  function initFalakHeader() {
+    var inputDateEl = document.getElementById('currentDate');
+    var wisClockEl = document.getElementById('wisClock');
+
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(function(position) {
+        userCoords.lon = position.coords.longitude;
+        userCoords.tzOffset = -new Date().getTimezoneOffset() / 60;
+      }, function(error) {
+        console.log('GPS tidak aktif atau izin ditolak, menggunakan lokasi default.');
+      });
+    }
+
+    setInterval(function() {
+      var sekarang = new Date();
+      if (inputDateEl) {
+        inputDateEl.innerText = dapatkanTanggalHijriah(sekarang);
+      }
+      if (wisClockEl) {
+        wisClockEl.innerText = hitungWaktuIstiwak(sekarang, userCoords.lon, userCoords.tzOffset);
+      }
+    }, 1000);
+  }
+
+  document.addEventListener('DOMContentLoaded', initFalakHeader);
   
   function toggleSidebar() {
     var s = document.getElementById("sidebar");
