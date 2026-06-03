@@ -354,12 +354,11 @@ async function checkSession() {
       return { isLoggedIn: false };
     }
     
-    // Gunakan data dari localStorage jika sudah ada (cepat)
     let role = localStorage.getItem(STORAGE_KEYS.USER_ROLE);
     let nama = localStorage.getItem(STORAGE_KEYS.USER_NAME);
     
-    // Hanya fetch profile dari server jika belum ada di localStorage
-    if (!role) {
+    // Selalu fetch dari server jika online untuk memastikan role terbaru
+    if (navigator.onLine) {
       const { data: profile } = await sb
         .from('profiles')
         .select('role, nama')
@@ -368,11 +367,19 @@ async function checkSession() {
       
       role = profile?.role || 'kasir';
       nama = profile?.nama || user.email?.split('@')[0] || 'User';
+      
+      // Update localStorage dengan data terbaru
+      localStorage.setItem(STORAGE_KEYS.USER_ROLE, role);
+      localStorage.setItem(STORAGE_KEYS.USER_NAME, nama);
+    } else if (!role) {
+      // Offline dan tidak ada data di localStorage
+      role = 'kasir';
+      nama = user.email?.split('@')[0] || 'User';
     }
     
     localStorage.setItem(STORAGE_KEYS.USER_ID, user.id);
     localStorage.setItem(STORAGE_KEYS.USER_EMAIL, user.email);
-    localStorage.setItem(STORAGE_KEYS.USER_NAME, nama || user.email?.split('@')[0] || 'User');
+    localStorage.setItem(STORAGE_KEYS.USER_NAME, nama);
     localStorage.setItem(STORAGE_KEYS.USER_ROLE, role);
     
     window.currentUserId = user.id;
@@ -492,17 +499,24 @@ async function logout() {
     console.warn('Sign out error:', e);
   }
   
+  // Kirim pesan ke Service Worker untuk clear cache
+  if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+    navigator.serviceWorker.controller.postMessage({ type: 'CLEAR_CACHE' });
+  }
+  
   // Hapus semua data lokal
   localStorage.removeItem(STORAGE_KEYS.USER_ID);
   localStorage.removeItem(STORAGE_KEYS.USER_EMAIL);
   localStorage.removeItem(STORAGE_KEYS.USER_NAME);
   localStorage.removeItem(STORAGE_KEYS.USER_ROLE);
   localStorage.removeItem("offline_allowed");
+  localStorage.removeItem("offline_mode");
   
   // Reset global variables
   window.currentUserId = null;
   window.currentUserRole = null;
   window.currentUserName = null;
+  window.currentRole = null;
   
   window.location.href = "index.html";
 }

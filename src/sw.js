@@ -1,4 +1,4 @@
-const CACHE_NAME = "kitabmadin-v2";
+const CACHE_NAME = "kitabmadin-v3";
 
 // Assets yang di-cache
 const ASSETS = [
@@ -21,7 +21,7 @@ const ASSETS = [
 
 // Install - cache semua assets
 self.addEventListener("install", event => {
-  console.log('[SW] Installing...');
+  console.log('[SW] Installing v3...');
   self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME)
@@ -32,7 +32,7 @@ self.addEventListener("install", event => {
 
 // Activate - hapus cache lama
 self.addEventListener("activate", event => {
-  console.log('[SW] Activating...');
+  console.log('[SW] Activating v3...');
   event.waitUntil(
     Promise.all([
       clients.claim(),
@@ -57,8 +57,36 @@ self.addEventListener("activate", event => {
   );
 });
 
-// Fetch - cache first, network fallback
+// Fetch - network-first untuk HTML, cache-first untuk aset lain
 self.addEventListener("fetch", event => {
+  const url = new URL(event.request.url);
+  
+  // Network-first untuk HTML navigations (app.html, index.html)
+  if (event.request.destination === 'document' || 
+      event.request.mode === 'navigate' ||
+      url.pathname.endsWith('.html') ||
+      url.pathname === '/') {
+    event.respondWith(
+      fetch(event.request)
+        .then(response => {
+          if (response && response.status === 200) {
+            const responseClone = response.clone();
+            caches.open(CACHE_NAME).then(cache => {
+              cache.put(event.request, responseClone);
+            });
+          }
+          return response;
+        })
+        .catch(() => {
+          return caches.match(event.request).then(cached => {
+            return cached || caches.match('/app.html');
+          });
+        })
+    );
+    return;
+  }
+  
+  // Cache-first untuk aset statis (JS, CSS, gambar)
   event.respondWith(
     caches.match(event.request)
       .then(response => {
@@ -66,7 +94,6 @@ self.addEventListener("fetch", event => {
           return response;
         }
         return fetch(event.request).then(fetchResponse => {
-          // Cache new requests
           if (fetchResponse && fetchResponse.status === 200) {
             const responseClone = fetchResponse.clone();
             caches.open(CACHE_NAME).then(cache => {
@@ -77,17 +104,27 @@ self.addEventListener("fetch", event => {
         });
       })
       .catch(() => {
-        // Offline fallback
-        if (event.request.destination === 'document') {
-          return caches.match('/app.html');
+        if (event.request.destination === 'image') {
+          return new Response('', { status: 404 });
         }
       })
   );
 });
 
-// Listen for skip waiting message
+// Listen untuk skip waiting dan clear cache
 self.addEventListener('message', event => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
+  }
+  // Clear cache saat logout
+  if (event.data && event.data.type === 'CLEAR_CACHE') {
+    caches.delete(CACHE_NAME).then(() => {
+      console.log('[SW] Cache cleared');
+      self.clients.matchAll().then(clients => {
+        clients.forEach(client => {
+          client.postMessage({ type: 'CACHE_CLEARED' });
+        });
+      });
+    });
   }
 });
