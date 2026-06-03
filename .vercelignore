@@ -1,6 +1,7 @@
 node_modules/
 src-tauri/
 src/
+src/public/
 .qoder/
 .vercel-tmp/
 *.log
