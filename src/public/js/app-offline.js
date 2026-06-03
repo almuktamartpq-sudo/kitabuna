@@ -1213,15 +1213,68 @@ function formatTanggalIndonesia(dateStr) {
 
 async function showDetailTransaksi(id) {
   try {
-    var transaksiData = await window.offlineCore.getTransaksi();
-    var allTransaksi = transaksiData.data || [];
     var transaksi = null;
-    for (var i = 0; i < allTransaksi.length; i++) {
-      if (allTransaksi[i].id === id) { transaksi = allTransaksi[i]; break; }
-    }
-    if (!transaksi) { Swal.fire({ icon: 'error', title: 'Error', text: 'Transaksi tidak ditemukan' }); return; }
+    var detail = [];
     
-    var detail = transaksi.detail_transaksi || [];
+    // Coba ambil dari Supabase dulu jika online
+    if (navigator.onLine && window.sb) {
+      try {
+        var { data: trx, error: trxErr } = await window.sb
+          .from('transaksi')
+          .select('*')
+          .eq('id', id)
+          .single();
+        
+        if (!trxErr && trx) {
+          transaksi = trx;
+          
+          // Ambil detail transaksi
+          var { data: details } = await window.sb
+            .from('detail_transaksi')
+            .select('*')
+            .eq('transaksi_id', id);
+          
+          if (details && details.length > 0) {
+            // Ambil data produk untuk mapping
+            var produkIds = details.map(function(d) { return d.produk_id; }).filter(Boolean);
+            var { data: produkList } = await window.sb
+              .from('produk')
+              .select('*')
+              .in('id', produkIds);
+            
+            var produkMap = {};
+            if (produkList) {
+              produkList.forEach(function(p) { produkMap[p.id] = p; });
+            }
+            
+            detail = details.map(function(d) {
+              var nd = Object.assign({}, d);
+              nd.produk = produkMap[d.produk_id] || null;
+              return nd;
+            });
+          }
+          
+          console.log('[NOTA] Berhasil ambil dari Supabase:', id);
+        }
+      } catch (e) {
+        console.warn('[NOTA] Gagal ambil dari Supabase:', e.message);
+      }
+    }
+    
+    // Fallback ke local storage jika tidak ditemukan di Supabase
+    if (!transaksi) {
+      var transaksiData = await window.offlineCore.getTransaksi();
+      var allTransaksi = transaksiData.data || [];
+      for (var i = 0; i < allTransaksi.length; i++) {
+        if (allTransaksi[i].id === id) { 
+          transaksi = allTransaksi[i]; 
+          detail = transaksi.detail_transaksi || [];
+          break; 
+        }
+      }
+    }
+    
+    if (!transaksi) { Swal.fire({ icon: 'error', title: 'Error', text: 'Transaksi tidak ditemukan' }); return; }
     var totalBelanja = 0, totalItems = 0;
     for (var d = 0; d < detail.length; d++) {
       totalBelanja += Number(detail[d].subtotal || 0);
