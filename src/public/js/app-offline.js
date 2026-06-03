@@ -948,12 +948,13 @@ async function loadLaporan() {
 
 // ==================== AMBIL DATA TRANSAKSI DARI SUPABASE ====================
 async function ambilDataTransaksiDariSupabase(startDate, endDate) {
-  // Coba ambil dari Supabase dulu jika online
+  // Selalu ambil dari Supabase jika online
   if (navigator.onLine && window.sb) {
     try {
       console.log('[LAPORAN] Mengambil data dari Supabase...');
       
-      var transaksiQuery = window.sb.from('transaksi').select('*');
+      // Join dengan profiles untuk dapat nama kasir
+      var transaksiQuery = window.sb.from('transaksi').select('*, profiles(nama)');
       
       if (startDate) {
         transaksiQuery = transaksiQuery.gte('created_at', startDate + 'T00:00:00');
@@ -997,9 +998,11 @@ async function ambilDataTransaksiDariSupabase(startDate, endDate) {
         }
       }
       
-      // Attach detail_transaksi ke masing-masing transaksi
+      // Attach detail_transaksi + nama kasir ke masing-masing transaksi
       var result = transaksi.map(function(t) {
         var newT = Object.assign({}, t);
+        // Ambil nama kasir dari join profiles
+        newT.nama_kasir = t.profiles?.nama || 'Kasir';
         newT.detail_transaksi = allDetails.filter(function(d) {
           return d.transaksi_id === t.id;
         }).map(function(d) {
@@ -1018,10 +1021,17 @@ async function ambilDataTransaksiDariSupabase(startDate, endDate) {
     }
   }
   
-  // Fallback ke local storage
-  console.log('[LAPORAN] Mengambil data dari local storage...');
+  // Fallback ke local storage hanya jika offline
+  console.log('[LAPORAN] Mengambil data dari local storage (offline)...');
   var transaksiData = await window.offlineCore.getTransaksi(startDate, endDate);
-  return transaksiData.data || [];
+  var localData = transaksiData.data || [];
+  // Tambahkan nama_kasir dari localStorage untuk data offline
+  var currentUserName = localStorage.getItem('offline_user_name') || 'Kasir';
+  return localData.map(function(t) {
+    var newT = Object.assign({}, t);
+    newT.nama_kasir = currentUserName;
+    return newT;
+  });
 }
 
 async function generateLaporan() {
@@ -1137,6 +1147,7 @@ async function generateLaporan() {
               <tr>
                 <th>No</th>
                 <th>Tanggal & Waktu</th>
+                <th>Kasir</th>
                 <th>Nama Pembeli</th>
                 <th>Total</th>
                 <th>Laba</th>
@@ -1158,11 +1169,13 @@ async function generateLaporan() {
       
       var tglFormatted = formatWIBDate(tr.created_at);
       var namaPembeli = tr.nama_pembeli || '-';
+      var namaKasir = tr.nama_kasir || 'Kasir';
       
       html += `
         <tr class="transaction-row">
           <td class="text-center">${j+1}</td>
           <td class="date-cell">${tglFormatted}</td>
+          <td class="customer-cell"><span class="customer-name">${escapeHtml(namaKasir)}</span></td>
           <td class="customer-cell"><span class="customer-name">${escapeHtml(namaPembeli)}</span></td>
           <td class="text-right amount">Rp ${Number(tr.total).toLocaleString()}</td>
           <td class="text-right profit">Rp ${Number(tr.total_laba).toLocaleString()}</td>
@@ -1215,18 +1228,21 @@ async function showDetailTransaksi(id) {
   try {
     var transaksi = null;
     var detail = [];
+    var namaKasir = 'Kasir';
     
     // Coba ambil dari Supabase dulu jika online
     if (navigator.onLine && window.sb) {
       try {
+        // Join dengan profiles untuk dapat nama kasir
         var { data: trx, error: trxErr } = await window.sb
           .from('transaksi')
-          .select('*')
+          .select('*, profiles(nama)')
           .eq('id', id)
           .single();
         
         if (!trxErr && trx) {
           transaksi = trx;
+          namaKasir = trx.profiles?.nama || 'Kasir';
           
           // Ambil detail transaksi
           var { data: details } = await window.sb
@@ -1254,7 +1270,7 @@ async function showDetailTransaksi(id) {
             });
           }
           
-          console.log('[NOTA] Berhasil ambil dari Supabase:', id);
+          console.log('[NOTA] Berhasil ambil dari Supabase:', id, 'kasir:', namaKasir);
         }
       } catch (e) {
         console.warn('[NOTA] Gagal ambil dari Supabase:', e.message);
@@ -1272,6 +1288,7 @@ async function showDetailTransaksi(id) {
           break; 
         }
       }
+      namaKasir = localStorage.getItem('offline_user_name') || 'Kasir';
     }
     
     if (!transaksi) { Swal.fire({ icon: 'error', title: 'Error', text: 'Transaksi tidak ditemukan' }); return; }
@@ -1290,7 +1307,7 @@ async function showDetailTransaksi(id) {
       second: '2-digit'
     });
     
-    var userName = localStorage.getItem("offline_user_name") || "Kasir";
+    var userName = namaKasir;
     var namaPembeli = transaksi.nama_pembeli || 'Pelanggan';
     // Prepare share text for WhatsApp immediately and cache it to avoid async blocking later
     try {
@@ -1433,15 +1450,63 @@ async function showDetailTransaksi(id) {
 
 async function printNota(id) {
   try {
-    var transaksiData = await window.offlineCore.getTransaksi();
-    var allTransaksi = transaksiData.data || [];
     var transaksi = null;
-    for (var i = 0; i < allTransaksi.length; i++) {
-      if (allTransaksi[i].id === id) { transaksi = allTransaksi[i]; break; }
-    }
-    if (!transaksi) { Swal.fire({ icon: 'error', title: 'Error', text: 'Transaksi tidak ditemukan' }); return; }
+    var detail = [];
+    var namaKasir = 'Kasir';
     
-    var detail = transaksi.detail_transaksi || [];
+    // Ambil dari Supabase jika online
+    if (navigator.onLine && window.sb) {
+      try {
+        var { data: trx, error: trxErr } = await window.sb
+          .from('transaksi')
+          .select('*, profiles(nama)')
+          .eq('id', id)
+          .single();
+        
+        if (!trxErr && trx) {
+          transaksi = trx;
+          namaKasir = trx.profiles?.nama || 'Kasir';
+          
+          var { data: details } = await window.sb
+            .from('detail_transaksi')
+            .select('*')
+            .eq('transaksi_id', id);
+          
+          if (details && details.length > 0) {
+            var produkIds = details.map(function(d) { return d.produk_id; }).filter(Boolean);
+            var { data: produkList } = await window.sb
+              .from('produk')
+              .select('*')
+              .in('id', produkIds);
+            var produkMap = {};
+            if (produkList) { produkList.forEach(function(p) { produkMap[p.id] = p; }); }
+            detail = details.map(function(d) {
+              var nd = Object.assign({}, d);
+              nd.produk = produkMap[d.produk_id] || null;
+              return nd;
+            });
+          }
+        }
+      } catch (e) {
+        console.warn('[PRINT] Gagal ambil dari Supabase:', e.message);
+      }
+    }
+    
+    // Fallback ke local
+    if (!transaksi) {
+      var transaksiData = await window.offlineCore.getTransaksi();
+      var allTransaksi = transaksiData.data || [];
+      for (var i = 0; i < allTransaksi.length; i++) {
+        if (allTransaksi[i].id === id) { 
+          transaksi = allTransaksi[i]; 
+          detail = transaksi.detail_transaksi || [];
+          break; 
+        }
+      }
+      namaKasir = localStorage.getItem('offline_user_name') || 'Kasir';
+    }
+    
+    if (!transaksi) { Swal.fire({ icon: 'error', title: 'Error', text: 'Transaksi tidak ditemukan' }); return; }
     var totalBelanja = 0;
     for (var d = 0; d < detail.length; d++) {
       totalBelanja += Number(detail[d].subtotal || 0);
@@ -1453,7 +1518,7 @@ async function printNota(id) {
     });
     
     var namaPembeli = transaksi.nama_pembeli || 'Pelanggan';
-    var userName = localStorage.getItem("offline_user_name") || "Kasir";
+    var userName = namaKasir;
     
     var printHtml = `
       <!DOCTYPE html>
