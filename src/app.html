@@ -1,0 +1,3242 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Dashboard - Kitab Madin Almuktamar</title>
+  
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#2563eb">
+  <link rel="apple-touch-icon" href="/icons/icon-192.png">
+</head>
+<body>
+
+<div class="app-container">
+  <div class="mobile-header">
+    <button class="menu-toggle" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+    <div class="mobile-logo"><img src="https://i.imgur.com/2mDfHEi.png/40x40?text=Logo" alt="Logo"><span>Kitab Madin</span></div>
+    <div class="user-profile-mobile" onclick="toggleUserMenu()"><i class="fas fa-user-circle"></i></div>
+  </div>
+
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <img src="https://i.imgur.com/2mDfHEi.png" alt="Logo" class="sidebar-logo">
+      <h2>Almuktamar</h2>
+      <button class="sidebar-close" onclick="toggleSidebar()"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="user-info">
+      <div class="user-details">
+        <span id="namaUser" class="user-name">Loading...</span>
+        <span id="roleUser" class="user-role">-</span>
+      </div>
+    </div>
+    <ul class="sidebar-menu">
+      <li onclick="loadDashboard()" class="active" id="menu-dashboard"><i class="fas fa-chart-pie"></i><span>Dashboard</span></li>
+      <li onclick="loadProdukPage()" id="menu-produk"><i class="fas fa-box"></i><span>Produk</span></li>
+      <li onclick="loadKasir()" id="menu-kasir"><i class="fas fa-shopping-cart"></i><span>Kasir</span></li>
+      <li onclick="loadLaporan()" id="menu-laporan"><i class="fas fa-file-invoice"></i><span>Laporan Penjualan</span></li>
+      <li onclick="loadLaporanMaster()" id="menu-laporan-master"><i class="fas fa-database"></i><span>Laporan Master Data</span></li>
+      <li onclick="loadMasterKelasPage()" id="menu-master-kelas"><i class="fas fa-layer-group"></i><span>Master Kelas</span></li>
+      <li onclick="showDataManagement()" id="menu-data"><i class="fas fa-database"></i><span>Manajemen Data</span></li>
+      <li onclick="showRoleManagement()" id="menu-role"><i class="fas fa-users-cog"></i><span>Manajemen Role</span></li>
+      <li onclick="showAdminDevicesPage()" id="menu-admin-devices" style="display:none;"><i class="fas fa-desktop"></i><span>Manajemen Perangkat</span></li>
+      <li class="logout" onclick="logout()"><i class="fas fa-sign-out-alt"></i><span>Logout</span></li>
+    </ul>
+  </aside>
+
+  <div class="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+  <main class="main-content">
+    <div class="content-header">
+      <h3 id="pageTitle">Dashboard</h3>
+      <div class="header-actions"><span class="date-display" id="currentDate"></span></div>
+    </div>
+    <div class="content-body" id="content">
+      <div class="loading-spinner"><i class="fas fa-spinner fa-spin"></i><p>Memuat...</p></div>
+    </div>
+  </main>
+</div>
+
+<div class="user-menu-mobile" id="userMenuMobile">
+  <div class="user-menu-header"><i class="fas fa-user-circle"></i><span id="userMenuName">User</span></div>
+  <div class="user-menu-item" onclick="logout()"><i class="fas fa-sign-out-alt"></i><span>Logout</span></div>
+</div>
+
+<!-- ============================================ -->
+<!-- SCRIPTS                                      -->
+<!-- ============================================ -->
+<script type="module" src="/js/main.js"></script>
+
+<script>
+
+<!-- Offline Auth Module (tanpa file terpisah) -->
+
+// ============================================
+// OFFLINE AUTH CHECK
+// ============================================
+function isOfflineMode() {
+  return localStorage.getItem("offline_mode") === "true";
+}
+
+function getCurrentUser() {
+  return {
+    id: localStorage.getItem("offline_user_id"),
+    email: localStorage.getItem("offline_user_email"),
+    nama: localStorage.getItem("offline_user_name"),
+    role: localStorage.getItem("offline_user_role")
+  };
+}
+
+function isMobileDevice() {
+  try {
+    if (navigator.userAgentData && typeof navigator.userAgentData.mobile === 'boolean') {
+      return navigator.userAgentData.mobile;
+    }
+    return /Mobi|Android|iPhone|iPad|iPod|Windows Phone/i.test(navigator.userAgent);
+  } catch (e) {
+    return false;
+  }
+}
+
+function canUseOfflineSync() {
+  return typeof window.auth !== 'undefined' && window.auth.canUseOfflineMode();
+}
+
+function requireOfflineSyncAllowed() {
+  if (!canUseOfflineSync()) {
+    Swal.fire({
+      icon: 'warning',
+      title: 'Perangkat Tidak Diizinkan',
+      text: 'Fitur sinkronisasi offline hanya tersedia untuk komputer/desktop yang disetujui. Gunakan perangkat yang telah disetujui untuk mode offline atau login secara online.',
+      confirmButtonText: 'Tutup'
+    });
+    return false;
+  }
+  return true;
+}
+
+// Tampilkan indikator offline mode
+function showOfflineIndicator() {
+  if (isOfflineMode()) {
+    var indicator = document.createElement('div');
+    indicator.id = 'offlineIndicator';
+    indicator.innerHTML = '<i class="fas fa-wifi-slash"></i> Mode Offline';
+    indicator.style.cssText = 'position:fixed; bottom:10px; left:10px; background:#f39c12; color:#fff; padding:5px 12px; border-radius:20px; font-size:11px; z-index:9999;';
+    document.body.appendChild(indicator);
+  }
+}
+
+// Panggil saat DOM ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', showOfflineIndicator);
+} else {
+  showOfflineIndicator();
+}
+
+  // ============================================
+  // ENVIRONMENT DETECTION
+  // ============================================
+  window.isTauri = !!(window.__TAURI__);
+  
+  function updateCurrentDate() {
+    var d = new Date();
+    var el = document.getElementById('currentDate');
+    if (el) el.textContent = d.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  }
+  updateCurrentDate();
+  setInterval(updateCurrentDate, 60000);
+  
+  function toggleSidebar() {
+    var s = document.getElementById("sidebar");
+    var o = document.querySelector(".sidebar-overlay");
+    if (s) s.classList.toggle("active");
+    if (o) o.classList.toggle("active");
+  }
+  
+  function toggleUserMenu() {
+    var m = document.getElementById("userMenuMobile");
+    if (m) {
+      m.style.display = m.style.display === 'block' ? 'none' : 'block';
+      setTimeout(function() { if (m) m.style.display = 'none'; }, 3000);
+    }
+  }
+  
+  document.addEventListener('click', function(e) {
+    var m = document.getElementById("userMenuMobile");
+    var b = document.querySelector(".user-profile-mobile");
+    if (m && b && !b.contains(e.target) && !m.contains(e.target)) m.style.display = 'none';
+  });
+  
+  function setActiveMenu(menu) {
+    var menus = ['dashboard', 'produk', 'kasir', 'laporan', 'laporan-master', 'master-kelas', 'data', 'role', 'admin-devices'];
+    for (var i = 0; i < menus.length; i++) {
+      var el = document.getElementById('menu-' + menus[i]);
+      if (el) {
+        if (menus[i] === menu) el.classList.add('active');
+        else el.classList.remove('active');
+      }
+    }
+  }
+  
+  // ============================================
+  // MANAJEMEN DATA
+  // ============================================
+  // ============================================
+// MANAJEMEN DATA - DENGAN DATA ONLINE
+// ============================================
+async function showDataManagement() {
+  if (window.currentRole !== 'admin') {
+    Swal.fire({
+      icon: 'warning',
+      title: 'Akses Ditolak',
+      text: 'Hanya admin yang dapat mengakses halaman ini.',
+      confirmButtonText: 'Tutup'
+    });
+    return;
+  }
+  
+  setActiveMenu('data');
+  document.getElementById("pageTitle").innerHTML = '<i class="fas fa-database"></i> Manajemen Data';
+  
+  var isOnline = navigator.onLine;
+  
+  // Ambil data offline
+  var offlineProduk = await window.localDB.getAll('produk') || [];
+  var offlineTransaksi = await window.localDB.getAll('transaksi') || [];
+  var offlineKelas = await window.localDB.getAll('master_kelas') || [];
+  
+  // Ambil data online (dari Supabase)
+  var onlineProduk = [];
+  var onlineTransaksi = [];
+  var onlineKelas = [];
+  
+  if (isOnline) {
+    try {
+      const { data: produkData } = await sb.from('produk').select('id', { count: 'exact', head: true });
+      const { count: produkCount } = await sb.from('produk').select('*', { count: 'exact', head: true });
+      onlineProduk = produkCount || 0;
+      
+      const { count: transaksiCount } = await sb.from('transaksi').select('*', { count: 'exact', head: true });
+      onlineTransaksi = transaksiCount || 0;
+      
+      const { count: kelasCount } = await sb.from('master_kelas').select('*', { count: 'exact', head: true });
+      onlineKelas = kelasCount || 0;
+    } catch(e) {
+      console.warn('Gagal ambil data online:', e);
+      onlineProduk = '?';
+      onlineTransaksi = '?';
+      onlineKelas = '?';
+    }
+  } else {
+    onlineProduk = 'Offline';
+    onlineTransaksi = 'Offline';
+    onlineKelas = 'Offline';
+  }
+  
+  var html = '<div class="card">' +
+    '<h2><i class="fas fa-database"></i> Manajemen Data</h2>' +
+    '<p class="subtitle">Kelola sinkronisasi dan reset data</p>' +
+    
+    '<div class="data-grid-2col">' +
+      // Data Offline (Lokal) - KIRI
+      '<div style="background:#f8f9fa; padding:15px; border-radius:12px;">' +
+        '<h3><i class="fas fa-database" style="color:#2c3e50;"></i> Data Offline (Lokal)</h3>' +
+        '<p>📦 Produk: <strong>' + offlineProduk.length + '</strong> item</p>' +
+        '<p>🧾 Transaksi: <strong>' + offlineTransaksi.length + '</strong> item</p>' +
+        '<p>📚 Kelas: <strong>' + offlineKelas.length + '</strong> item</p>' +
+      '</div>' +
+      
+      // Data Online (Server) - KANAN
+      '<div style="background:#e8f4f8; padding:15px; border-radius:12px; border-left: 3px solid #3498db;">' +
+        '<h3><i class="fas fa-cloud" style="color:#3498db;"></i> Data Online (Server)</h3>' +
+        '<p>📦 Produk: <strong>' + (typeof onlineProduk === 'number' ? onlineProduk.toLocaleString() : onlineProduk) + '</strong> item</p>' +
+        '<p>🧾 Transaksi: <strong>' + (typeof onlineTransaksi === 'number' ? onlineTransaksi.toLocaleString() : onlineTransaksi) + '</strong> item</p>' +
+        '<p>📚 Kelas: <strong>' + (typeof onlineKelas === 'number' ? onlineKelas.toLocaleString() : onlineKelas) + '</strong> item</p>' +
+        (isOnline ? '<small style="color:#27ae60;"><i class="fas fa-wifi"></i> Terhubung ke server</small>' : 
+                    '<small style="color:#e74c3c;"><i class="fas fa-wifi-slash"></i> Tidak terhubung</small>') +
+      '</div>' +
+    '</div>' +
+    
+    '<div style="border-top:1px solid #eee; margin:20px 0; padding-top:20px;">' +
+      '<h3><i class="fas fa-tools"></i> Aksi Manajemen Data</h3>' +
+      '<div class="data-actions-grid">' +
+        
+        '<div class="data-card" style="border:1px solid #3498db; border-radius:12px; padding:15px; cursor:pointer;" onclick="syncToSupabase()">' +
+          '<i class="fas fa-cloud-upload-alt" style="font-size:24px; color:#3498db;"></i>' +
+          '<h4 style="margin:10px 0 5px;">Backup ke Server</h4>' +
+          '<small>Sinkronkan data offline ke Supabase</small>' +
+        '</div>' +
+        
+        '<div class="data-card" style="border:1px solid #e67e22; border-radius:12px; padding:15px; cursor:pointer;" onclick="downloadFromSupabase()">' +
+          '<i class="fas fa-cloud-download-alt" style="font-size:24px; color:#e67e22;"></i>' +
+          '<h4 style="margin:10px 0 5px;">Unduh dari Server</h4>' +
+          '<small>Ambil data terbaru dari Supabase</small>' +
+        '</div>' +
+        
+        '<div class="data-card" style="border:1px solid #f39c12; border-radius:12px; padding:15px; cursor:pointer;" onclick="resetOfflineData()">' +
+          '<i class="fas fa-undo-alt" style="font-size:24px; color:#f39c12;"></i>' +
+          '<h4 style="margin:10px 0 5px;">Reset Data Offline</h4>' +
+          '<small>Kosongkan semua data lokal</small>' +
+        '</div>' +
+        
+        '<div class="data-card" style="border:1px solid #e74c3c; border-radius:12px; padding:15px; cursor:pointer;" onclick="fullResetAndDownload()">' +
+          '<i class="fas fa-sync-alt" style="font-size:24px; color:#e74c3c;"></i>' +
+          '<h4 style="margin:10px 0 5px;">Reset & Unduh Ulang</h4>' +
+          '<small>Hapus semua data, unduh ulang dari server</small>' +
+        '</div>' +
+        
+        // TAMBAHKAN TOMBOL BANDINGKAN DATA
+        '<div class="data-card" style="border:1px solid #9b59b6; border-radius:12px; padding:15px; cursor:pointer;" onclick="if(window.syncManager) window.syncManager.compareData(); else alert(\'Fitur sedang dimuat\')">' +
+          '<i class="fas fa-chart-line" style="font-size:24px; color:#9b59b6;"></i>' +
+          '<h4 style="margin:10px 0 5px;">Bandingkan Data</h4>' +
+          '<small>Lihat perbedaan data offline vs online</small>' +
+        '</div>' +
+        
+      '</div>' +
+    '</div>' +
+    
+    '<div style="background:#e8f4f8; padding:15px; border-radius:12px; margin-top:20px;">' +
+      '<i class="fas fa-shield-alt"></i> <strong>Tips:</strong><br>' +
+      '<small>• Pastikan koneksi stabil saat sinkronisasi<br>' +
+      '• Gunakan perangkat desktop/laptop yang disetujui untuk offline</small>' +
+    '</div>' +
+  '</div>';
+  
+  document.getElementById("content").innerHTML = html;
+}
+ 
+// MANAJEMEN ROLE (CRUD USER) - DENGAN CEK OFFLINE
+// ============================================
+async function showRoleManagement() {
+  if (window.currentRole !== 'admin') {
+    Swal.fire({
+      icon: 'warning',
+      title: 'Akses Ditolak',
+      text: 'Hanya admin yang dapat mengakses halaman ini.',
+      confirmButtonText: 'Tutup'
+    });
+    return;
+  }
+  
+  setActiveMenu('role');
+  document.getElementById("pageTitle").innerHTML = '<i class="fas fa-users-cog"></i> Manajemen Role';
+  
+  // ========== CEK STATUS OFFLINE ==========
+  var isOnline = navigator.onLine;
+  
+  if (!isOnline) {
+    Swal.fire({
+      icon: 'warning',
+      title: 'Mode Offline',
+      html: '<div style="text-align:left;">' +
+        '<p><i class="fas fa-wifi-slash" style="color:#f39c12;"></i> <strong>Anda sedang offline!</strong></p>' +
+        '<p>Manajemen Role membutuhkan koneksi internet untuk:</p>' +
+        '<ul style="margin-left:20px;">' +
+          '<li>Melihat daftar user</li>' +
+          '<li>Menambah user baru</li>' +
+          '<li>Mengedit role user</li>' +
+          '<li>Menghapus user</li>' +
+        '</ul>' +
+        '<p>Silakan sambungkan internet dan refresh halaman.</p>' +
+        '</div>',
+      confirmButtonText: 'Coba Lagi',
+      showCancelButton: true,
+      cancelButtonText: 'Tutup'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        location.reload();
+      } else {
+        loadDashboard();
+      }
+    });
+    
+    // Tampilkan pesan offline di content
+    document.getElementById("content").innerHTML = `
+      <div class="offline-warning-card">
+        <div class="offline-icon"><i class="fas fa-wifi-slash"></i></div>
+        <h3>Mode Offline</h3>
+        <p>Manajemen Role tidak tersedia dalam mode offline.</p>
+        <p>Silakan sambungkan ke internet untuk mengakses fitur ini.</p>
+        <button class="btn btn-primary" onclick="location.reload()">
+          <i class="fas fa-sync-alt"></i> Coba Lagi
+        </button>
+        <button class="btn btn-secondary" onclick="loadDashboard()">
+          <i class="fas fa-home"></i> Kembali ke Dashboard
+        </button>
+      </div>
+    `;
+    return;
+  }
+  
+  Swal.fire({
+    title: 'Memuat Data User...',
+    allowOutsideClick: false,
+    didOpen: function() { Swal.showLoading(); }
+  });
+  
+  try {
+    // Ambil data user dari Supabase
+    var { data: users, error } = await sb.from('profiles').select('*').order('created_at', { ascending: true });
+    
+    Swal.close();
+    
+    if (error) throw error;
+    
+    var html = `
+      <div class="role-management-card">
+        <div class="card-header">
+          <div class="header-left">
+            <h2><i class="fas fa-users-cog"></i> Manajemen Role User</h2>
+          </div>
+          <div class="header-right">
+            <div class="online-status-badge" style="background: #d4edda; color: #155724; border: 1px solid #c3e6cb;">
+              <i class="fas fa-wifi"></i> Online - Tersambung ke server
+            </div>
+            <button class="btn btn-success" onclick="showAddUserForm()">
+              <i class="fas fa-plus"></i> Tambah User
+            </button>
+          </div>
+        </div>
+        <p class="subtitle">Kelola hak akses user (Admin / Kasir)</p>
+        
+        <div class="table-responsive">
+          <table class="role-table">
+            <thead>
+              <tr>
+                <th>No</th>
+                <th>Nama</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Aksi</th>
+              </tr>
+            </thead>
+            <tbody>
+    `;
+    
+    for (var i = 0; i < users.length; i++) {
+      var user = users[i];
+      var roleBadge = user.role === 'admin' ? 
+        '<span class="role-badge-admin">👑 Admin</span>' : 
+        '<span class="role-badge-kasir">🛒 Kasir</span>';
+      
+      // Cek apakah user adalah user yang sedang login
+      var currentUserId = localStorage.getItem("offline_user_id");
+      var isCurrentUser = user.id === currentUserId;
+      
+      html += `
+        <tr>
+          <td>${i+1}</td>
+          <td><strong>${escapeHtml(user.nama || '-')}</strong> ${isCurrentUser ? '<span class="current-user-badge">(Anda)</span>' : ''}</td>
+          <td>${escapeHtml(user.email || '-')}</td>
+          <td class="text-center">${roleBadge}</td>
+          <td class="text-center">
+            <button class="btn-edit" onclick="editUserRole('${user.id}', '${escapeHtml(user.nama)}', '${user.role}')">
+              <i class="fas fa-edit"></i> Edit Role
+            </button>
+            ${!isCurrentUser ? `<button class="btn-delete" onclick="deleteUser('${user.id}', '${escapeHtml(user.nama)}')">
+              <i class="fas fa-trash"></i> Hapus
+            </button>` : '<button class="btn-disabled" disabled><i class="fas fa-lock"></i> Tidak bisa hapus sendiri</button>'}
+          </td>
+        </tr>
+      `;
+    }
+    
+    html += `
+            </tbody>
+          </table>
+        </div>
+        
+        <div class="info-box">
+          <i class="fas fa-info-circle"></i>
+          <div>
+            <strong>Keterangan Role:</strong><br>
+            • <span class="role-badge-admin" style="display:inline-block; padding:2px 8px;">Admin</span> - Akses penuh (dashboard, produk, kasir, laporan, master data, manajemen role)<br>
+            • <span class="role-badge-kasir" style="display:inline-block; padding:2px 8px;">Kasir</span> - Akses terbatas (kasir, laporan penjualan)
+          </div>
+        </div>
+      </div>
+    `;
+    
+    document.getElementById("content").innerHTML = html;
+    
+  } catch(error) {
+    Swal.close();
+    Swal.fire({
+      icon: 'error',
+      title: 'Gagal Memuat Data',
+      text: error.message,
+      confirmButtonText: 'Tutup'
+    });
+  }
+}
+  
+  // Form tambah user
+ // ============================================
+// TAMBAH USER - VIA SUPABASE CLIENT (TANPA ADMIN KEY)
+// ============================================
+function showAddUserForm() {
+  Swal.fire({
+    title: 'Tambah User Baru',
+    html: '<div style="text-align:left;">' +
+      '<div class="form-group"><label>Nama Lengkap</label><input type="text" id="nama" class="swal2-input" style="width:100%" placeholder="Nama user"></div>' +
+      '<div class="form-group" style="margin-top:10px;"><label>Email</label><input type="email" id="email" class="swal2-input" style="width:100%" placeholder="email@example.com"></div>' +
+      '<div class="form-group" style="margin-top:10px;"><label>Password</label><input type="password" id="password" class="swal2-input" style="width:100%" placeholder="Password (minimal 6 karakter)"></div>' +
+      '<div class="form-group" style="margin-top:10px;"><label>Role</label><select id="role" class="swal2-select" style="width:100%"><option value="kasir">Kasir</option><option value="admin">Admin</option></select></div>' +
+      '</div>',
+    showCancelButton: true,
+    confirmButtonText: 'Tambah User',
+    cancelButtonText: 'Batal',
+    preConfirm: function() {
+      var nama = document.getElementById('nama').value;
+      var email = document.getElementById('email').value;
+      var password = document.getElementById('password').value;
+      var role = document.getElementById('role').value;
+      
+      if (!nama) { Swal.showValidationMessage('Nama harus diisi'); return false; }
+      if (!email) { Swal.showValidationMessage('Email harus diisi'); return false; }
+      if (!password || password.length < 6) { Swal.showValidationMessage('Password minimal 6 karakter'); return false; }
+      if (!email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) { Swal.showValidationMessage('Email tidak valid'); return false; }
+      
+      return { nama: nama, email: email, password: password, role: role };
+    }
+  }).then(async function(result) {
+    if (result.isConfirmed) {
+      Swal.fire({
+        title: 'Membuat User...',
+        text: 'Mohon tunggu sebentar',
+        allowOutsideClick: false,
+        didOpen: function() { Swal.showLoading(); }
+      });
+      
+      try {
+        // ============================================
+        // CARA 1: PAKAI SUPABASE CLIENT (TANPA ADMIN)
+        // ============================================
+        
+        // Langkah 1: Daftarkan user via signUp (ini akan mengirim email verifikasi)
+        const { data: signUpData, error: signUpError } = await sb.auth.signUp({
+          email: result.value.email,
+          password: result.value.password,
+          options: {
+            data: {
+              nama: result.value.nama,
+              role: result.value.role
+            }
+          }
+        });
+        
+        if (signUpError) throw signUpError;
+        
+        if (!signUpData.user) throw new Error('Gagal membuat user');
+        
+        const newUserId = signUpData.user.id;
+        
+        // Langkah 2: Buat profile di tabel profiles
+        // Note: Karena signUp otomatis membuat user, kita perlu update/tambah profile
+        const { error: profileError } = await sb
+          .from('profiles')
+          .upsert({
+            id: newUserId,
+            nama: result.value.nama,
+            role: result.value.role,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            arrived_at: new Date().toISOString()
+          }, { onConflict: 'id' });
+        
+        if (profileError) throw profileError;
+        
+        Swal.close();
+        
+        // Tampilkan pesan sukses dengan informasi tambahan
+        Swal.fire({
+          icon: 'success',
+          title: 'User Berhasil Ditambahkan!',
+          html: `
+            <div style="text-align:left;">
+              <p><strong>${result.value.nama}</strong> (${result.value.role})</p>
+              <p>Email: ${result.value.email}</p>
+              <hr>
+              <small class="text-muted">📧 Email verifikasi telah dikirim ke user.<br>User harus verifikasi email sebelum login.</small>
+            </div>
+          `,
+          confirmButtonText: 'OK'
+        }).then(function() {
+          showRoleManagement();
+        });
+        
+      } catch(error) {
+        Swal.close();
+        console.error('Error creating user:', error);
+        
+        let errorMessage = error.message;
+        if (errorMessage.includes('already registered')) {
+          errorMessage = 'Email sudah terdaftar! Gunakan email lain.';
+        }
+        
+        Swal.fire({
+          icon: 'error',
+          title: 'Gagal Menambah User',
+          text: errorMessage,
+          confirmButtonText: 'Tutup'
+        });
+      }
+    }
+  });
+}
+  
+  // Edit role user
+  // Edit role user - SUDAH BENAR
+function editUserRole(userId, userName, currentRole) {
+  Swal.fire({
+    title: 'Edit Role User',
+    html: '<div style="text-align:left;">' +
+      '<p><strong>User:</strong> ' + userName + '</p>' +
+      '<div class="form-group"><label>Role</label><select id="role" class="swal2-select" style="width:100%">' +
+        '<option value="kasir"' + (currentRole === 'kasir' ? ' selected' : '') + '>Kasir</option>' +
+        '<option value="admin"' + (currentRole === 'admin' ? ' selected' : '') + '>Admin</option>' +
+      '</select></div>' +
+      '</div>',
+    showCancelButton: true,
+    confirmButtonText: 'Simpan Perubahan',
+    cancelButtonText: 'Batal',
+    preConfirm: function() {
+      return { role: document.getElementById('role').value };
+    }
+  }).then(async function(result) {
+    if (result.isConfirmed) {
+      Swal.fire({
+        title: 'Menyimpan...',
+        allowOutsideClick: false,
+        didOpen: function() { Swal.showLoading(); }
+      });
+      
+      try {
+        // Update role di tabel profiles
+        var { error } = await sb
+          .from('profiles')
+          .update({ role: result.value.role, updated_at: new Date().toISOString() })
+          .eq('id', userId);
+        
+        if (error) throw error;
+        
+        // Update local DB
+        var profile = await window.localDB.getById('profiles', userId);
+        if (profile) {
+          profile.role = result.value.role;
+          profile.updated_at = new Date().toISOString();
+          await window.localDB.save('profiles', profile, userId);
+        }
+        
+        Swal.close();
+        Swal.fire({
+          icon: 'success',
+          title: 'Role Diperbarui!',
+          text: 'Role user ' + userName + ' sekarang: ' + (result.value.role === 'admin' ? 'Admin' : 'Kasir'),
+          confirmButtonText: 'OK'
+        }).then(function() {
+          showRoleManagement();
+        });
+        
+      } catch(error) {
+        Swal.close();
+        Swal.fire({
+          icon: 'error',
+          title: 'Gagal',
+          text: error.message,
+          confirmButtonText: 'Tutup'
+        });
+      }
+    }
+  });
+}
+  
+  // Hapus user
+ // Hapus user - PERBAIKI
+async function deleteUser(userId, userName) {
+  // Cek jangan sampai hapus sendiri
+  var currentUserId = localStorage.getItem("offline_user_id");
+  if (userId === currentUserId) {
+    Swal.fire({
+      icon: 'error',
+      title: 'Tidak Bisa Hapus',
+      text: 'Anda tidak dapat menghapus akun sendiri!',
+      confirmButtonText: 'Tutup'
+    });
+    return;
+  }
+  
+  var confirm = await Swal.fire({
+    title: 'Hapus User?',
+    html: '<p>Anda yakin ingin menghapus user <strong>' + userName + '</strong>?</p>' +
+          '<p><i class="fas fa-exclamation-triangle" style="color:#e74c3c;"></i> Tindakan ini tidak dapat dibatalkan!</p>' +
+          '<p><small>⚠️ Catatan: User akan dinonaktifkan (tidak bisa login).</small></p>',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'Ya, Hapus',
+    cancelButtonText: 'Batal',
+    confirmButtonColor: '#e74c3c'
+  });
+  
+  if (!confirm.isConfirmed) return;
+  
+  Swal.fire({
+    title: 'Menghapus User...',
+    allowOutsideClick: false,
+    didOpen: function() { Swal.showLoading(); }
+  });
+  
+  try {
+    // Hapus dari profiles (di Supabase)
+    var { error: profileError } = await sb
+      .from('profiles')
+      .delete()
+      .eq('id', userId);
+    
+    if (profileError) throw profileError;
+    
+    // Hapus dari local DB
+    await window.localDB.delete('profiles', userId);
+    
+    Swal.close();
+    Swal.fire({
+      icon: 'success',
+      title: 'User Dihapus!',
+      text: 'User ' + userName + ' telah dihapus dari sistem.',
+      confirmButtonText: 'OK'
+    }).then(function() {
+      showRoleManagement();
+    });
+    
+  } catch(error) {
+    Swal.close();
+    Swal.fire({
+      icon: 'error',
+      title: 'Gagal Hapus',
+      text: error.message,
+      confirmButtonText: 'Tutup'
+    });
+  }
+}
+  
+  // ============================================
+  // BACKUP & RESTORE FUNCTIONS
+  // ============================================
+  async function backupToLocal() {
+    var confirm = await Swal.fire({
+      title: 'Backup Data ke File?',
+      text: 'Semua data offline akan disimpan ke file JSON.',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Ya, Backup',
+      cancelButtonText: 'Batal'
+    });
+    
+    if (!confirm.isConfirmed) return;
+    
+    Swal.fire({
+      title: 'Membuat Backup...',
+      allowOutsideClick: false,
+      didOpen: function() { Swal.showLoading(); }
+    });
+    
+    try {
+      var backupData = {
+        timestamp: new Date().toISOString(),
+        data: {
+          produk: await window.localDB.getAll('produk') || [],
+          transaksi: await window.localDB.getAll('transaksi') || [],
+          detail_transaksi: await window.localDB.getAll('detail_transaksi') || [],
+          profiles: await window.localDB.getAll('profiles') || [],
+          master_kelas: await window.localDB.getAll('master_kelas') || []
+        }
+      };
+      
+      var jsonStr = JSON.stringify(backupData, null, 2);
+      var blob = new Blob([jsonStr], { type: 'application/json' });
+      var url = URL.createObjectURL(blob);
+      var fileName = 'kitab_madin_backup_' + new Date().toISOString().slice(0,19).replace(/:/g, '-') + '.json';
+      
+      var link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      link.click();
+      
+      URL.revokeObjectURL(url);
+      
+      Swal.close();
+      Swal.fire({
+        icon: 'success',
+        title: 'Backup Berhasil!',
+        html: 'File: <strong>' + fileName + '</strong><br>Ukuran: ' + (jsonStr.length / 1024).toFixed(2) + ' KB',
+        confirmButtonText: 'OK'
+      });
+      
+    } catch(error) {
+      Swal.close();
+      Swal.fire({ icon: 'error', title: 'Backup Gagal', text: error.message });
+    }
+  }
+  
+  async function restoreFromLocal() {
+    Swal.fire({
+      title: 'Pulihkan dari File Backup',
+      html: '<input type="file" id="backupFile" accept=".json" style="padding:10px; border:1px solid #ddd; border-radius:8px; width:100%;">',
+      showCancelButton: true,
+      confirmButtonText: 'Pulihkan',
+      cancelButtonText: 'Batal',
+      preConfirm: function() {
+        var fileInput = document.getElementById('backupFile');
+        if (!fileInput.files || !fileInput.files[0]) {
+          Swal.showValidationMessage('Pilih file backup terlebih dahulu!');
+          return false;
+        }
+        return fileInput.files[0];
+      }
+    }).then(async function(result) {
+      if (result.isConfirmed && result.value) {
+        var file = result.value;
+        var reader = new FileReader();
+        
+        reader.onload = async function(e) {
+          try {
+            var backupData = JSON.parse(e.target.result);
+            if (!backupData.data || !backupData.data.produk) throw new Error('File backup tidak valid');
+            
+            var confirm2 = await Swal.fire({
+              title: 'Konfirmasi Restore',
+              html: '<div style="text-align:left;"><p>Data yang akan dipulihkan:</p><ul><li>📦 Produk: ' + backupData.data.produk.length + '</li><li>🧾 Transaksi: ' + backupData.data.transaksi.length + '</li></ul><p><i class="fas fa-exclamation-triangle" style="color:#f39c12;"></i> Data saat ini akan DIGANTI!</p></div>',
+              icon: 'warning',
+              showCancelButton: true,
+              confirmButtonText: 'Ya, Pulihkan',
+              cancelButtonText: 'Batal'
+            });
+            
+            if (!confirm2.isConfirmed) return;
+            
+            Swal.fire({ title: 'Memulihkan Data...', allowOutsideClick: false, didOpen: function() { Swal.showLoading(); } });
+            
+            await window.localDB.clear('produk');
+            await window.localDB.clear('transaksi');
+            await window.localDB.clear('detail_transaksi');
+            await window.localDB.clear('profiles');
+            await window.localDB.clear('master_kelas');
+            
+            for (var i = 0; i < backupData.data.produk.length; i++) {
+              await window.localDB.save('produk', backupData.data.produk[i], backupData.data.produk[i].id);
+            }
+            for (var j = 0; j < backupData.data.transaksi.length; j++) {
+              await window.localDB.save('transaksi', backupData.data.transaksi[j], backupData.data.transaksi[j].id);
+            }
+            for (var k = 0; k < backupData.data.detail_transaksi.length; k++) {
+              await window.localDB.save('detail_transaksi', backupData.data.detail_transaksi[k]);
+            }
+            for (var l = 0; l < backupData.data.profiles.length; l++) {
+              await window.localDB.save('profiles', backupData.data.profiles[l], backupData.data.profiles[l].id);
+            }
+            for (var m = 0; m < backupData.data.master_kelas.length; m++) {
+              await window.localDB.save('master_kelas', backupData.data.master_kelas[m], backupData.data.master_kelas[m].id);
+            }
+            
+            Swal.close();
+            Swal.fire({ icon: 'success', title: 'Restore Berhasil!', text: 'Data berhasil dipulihkan. Aplikasi akan direstart.', timer: 2000, showConfirmButton: false });
+            setTimeout(function() { location.reload(); }, 2000);
+            
+          } catch(error) {
+            Swal.close();
+            Swal.fire({ icon: 'error', title: 'Restore Gagal', text: error.message });
+          }
+        };
+        reader.readAsText(file);
+      }
+    });
+  }
+  
+  async function syncToSupabase() {
+    if (!navigator.onLine) {
+      Swal.fire({ icon: 'warning', title: 'Tidak Ada Koneksi', text: 'Anda sedang offline.' });
+      return;
+    }
+
+    if (!requireOfflineSyncAllowed()) {
+      return;
+    }
+    
+    var confirm = await Swal.fire({
+      title: '⚠️ Backup Data ke Server?',
+      html: '<div style="text-align:left;"><p>Data lokal Anda akan disinkronkan ke server.</p><p><strong>Yang akan disinkronkan:</strong></p><ul><li>📦 Produk</li><li>📚 Kelas</li><li>🧾 Transaksi</li></ul></div>',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Ya, Backup',
+      cancelButtonText: 'Batal'
+    });
+    
+    if (!confirm.isConfirmed) return;
+    
+    Swal.fire({ title: 'Menyinkronkan...', allowOutsideClick: false, didOpen: function() { Swal.showLoading(); } });
+    
+    try {
+      var produk = await window.localDB.getAll('produk') || [];
+      var kelas = await window.localDB.getAll('master_kelas') || [];
+      var transaksiList = await window.localDB.getAll('transaksi') || [];
+      var detailList = await window.localDB.getAll('detail_transaksi') || [];
+      var syncedTransaksi = 0;
+      
+      var PRODUK_COLS = ['id', 'nama', 'harga_beli', 'harga_jual', 'stok', 'gambar_url', 'created_at', 'updated_at', 'deleted_at', 'synced_at'];
+      for (var i = 0; i < produk.length; i++) {
+        var p = produk[i];
+        if (!p.id || p.id.toString().startsWith('local_')) continue;
+        var cleanP = {};
+        PRODUK_COLS.forEach(function(col) { if (p[col] !== undefined) cleanP[col] = p[col]; });
+        await sb.from('produk').upsert(cleanP, { onConflict: 'id' });
+      }
+      
+      for (var j = 0; j < kelas.length; j++) {
+        var k = kelas[j];
+        if (!k.id || k.id.toString().startsWith('kelas_')) continue;
+        await sb.from('master_kelas').upsert(k, { onConflict: 'id' });
+      }
+
+      if (window.offlineCore && typeof window.offlineCore.syncTransaksiToServer === 'function') {
+        for (var t = 0; t < transaksiList.length; t++) {
+          var trx = transaksiList[t];
+          if (trx.synced) continue;
+          var detailRows = detailList.filter(function(d) { return d.transaksi_id === trx.id; });
+          if (detailRows.length === 0) continue;
+          var cart = detailRows.map(function(d) {
+            return {
+              id: d.produk_id,
+              qty: d.qty,
+              harga_jual: d.harga,
+              harga_beli: d.harga_beli || 0
+            };
+          });
+          var result = await window.offlineCore.syncTransaksiToServer(trx, cart);
+          if (result && result.success) {
+            trx.synced = true;
+            if (result.serverId) trx.server_id = result.serverId;
+            await window.localDB.save('transaksi', trx, trx.id);
+            syncedTransaksi++;
+          }
+        }
+      }
+      
+      // ========== PENTING: Download data terbaru dari server ke local cache ==========
+      // Setelah upload, sync kembali data server ke IndexedDB agar UI menampilkan data terbaru
+      Swal.close();
+      Swal.fire({ title: 'Mengunduh data terbaru...', allowOutsideClick: false, didOpen: function() { Swal.showLoading(); } });
+      
+      try {
+        // Download semua produk terbaru dari server (with kelas associations)
+        const { data: allProduk } = await window.syncManager.fetchProdukWithKelas('*');
+        if (allProduk && allProduk.length > 0) {
+          for (var p of allProduk) {
+            await window.localDB.save('produk', p, p.id);
+          }
+          console.log('✅ Produk updated dari server:', allProduk.length);
+        }
+
+        // Download semua kelas terbaru dari server
+        const { data: allKelas } = await sb.from('master_kelas').select('*');
+        if (allKelas && allKelas.length > 0) {
+          for (var k of allKelas) {
+            await window.localDB.save('master_kelas', k, k.id);
+          }
+          console.log('✅ Kelas updated dari server:', allKelas.length);
+        }
+      } catch(downloadError) {
+        console.warn('⚠️ Gagal download data terbaru, akan lanjut reload:', downloadError);
+      }
+      
+      Swal.close();
+      const now = new Date().toISOString();
+      localStorage.setItem('last_sync_produk', now);
+      localStorage.setItem('last_sync_kelas', now);
+      localStorage.setItem('last_sync_transaksi', now);
+      localStorage.setItem('last_full_sync', now);
+      localStorage.removeItem('pending_updates');
+
+      Swal.fire({
+        icon: 'success',
+        title: 'Backup Selesai!',
+        html: 'Data berhasil disinkronkan ke server.<br>Produk: ' + produk.length + '<br>Kelas: ' + kelas.length + '<br>Transaksi tersinkron: ' + syncedTransaksi,
+        timer: 2000,
+        showConfirmButton: false
+      });
+      
+      setTimeout(function() { location.reload(); }, 2000);
+      
+    } catch(error) {
+      Swal.close();
+      Swal.fire({ icon: 'error', title: 'Gagal', text: error.message || 'Terjadi kesalahan saat sinkronisasi.' });
+    }
+  }
+  
+  async function downloadFromSupabase() {
+  if (!navigator.onLine) {
+    Swal.fire({
+      icon: 'warning',
+      title: 'Tidak Ada Koneksi',
+      text: 'Anda sedang offline. Sambungkan internet terlebih dahulu.',
+      confirmButtonText: 'Tutup'
+    });
+    return;
+  }
+
+  if (!requireOfflineSyncAllowed()) {
+    return;
+  }
+  
+  var confirm = await Swal.fire({
+    title: 'Unduh Data dari Server?',
+    html: '<div style="text-align:left;">' +
+      '<p>Data akan diunduh dari Supabase dan MENIMPA data offline saat ini.</p>' +
+      '<p><strong>Yang akan diunduh:</strong></p>' +
+      '<ul><li>📦 Produk</li><li>📚 Kelas</li><li>👤 Profil (akan mempertahankan role Anda)</li></ul>' +
+      '<p><i class="fas fa-exclamation-triangle" style="color:#f39c12;"></i> <strong>Perhatian!</strong> Data offline akan diganti!</p>' +
+      '</div>',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'Ya, Unduh',
+    cancelButtonText: 'Batal'
+  });
+  
+  if (!confirm.isConfirmed) return;
+  
+  Swal.fire({
+    title: 'Mengunduh Data...',
+    text: 'Mohon tunggu...',
+    allowOutsideClick: false,
+    didOpen: function() { Swal.showLoading(); }
+  });
+  
+  try {
+    // Simpan data user yang login
+    var currentUserId = localStorage.getItem("offline_user_id");
+    var currentUserRole = localStorage.getItem("offline_user_role");
+    var currentUserName = localStorage.getItem("offline_user_name");
+    
+    // Unduh produk (with kelas associations)
+    var produkRes = await window.syncManager.fetchProdukWithKelas('*');
+    var produkData = produkRes.data || [];
+    for (var i = 0; i < produkData.length; i++) {
+      await window.localDB.save('produk', produkData[i], produkData[i].id);
+    }
+    
+    // Unduh kelas
+    var kelasRes = await sb.from('master_kelas').select('*');
+    var kelasData = kelasRes.data || [];
+    for (var j = 0; j < kelasData.length; j++) {
+      await window.localDB.save('master_kelas', kelasData[j], kelasData[j].id);
+    }
+    
+    // Unduh profil
+    var profilRes = await sb.from('profiles').select('*');
+    var profilData = profilRes.data || [];
+    for (var k = 0; k < profilData.length; k++) {
+      await window.localDB.save('profiles', profilData[k], profilData[k].id);
+    }
+    
+    // ========== TAMBAHAN: UNDUH SEMUA TRANSAKSI DAN DETAIL ==========
+    var transaksiRes = await sb.from('transaksi').select('*, detail_transaksi(*)').order('created_at', { ascending: false });
+    var transaksiData = transaksiRes.data || [];
+    for (var t = 0; t < transaksiData.length; t++) {
+      await window.localDB.save('transaksi', transaksiData[t], transaksiData[t].id);
+      if (transaksiData[t].detail_transaksi && Array.isArray(transaksiData[t].detail_transaksi)) {
+        for (var dt = 0; dt < transaksiData[t].detail_transaksi.length; dt++) {
+          await window.localDB.save('detail_transaksi', transaksiData[t].detail_transaksi[dt], transaksiData[t].detail_transaksi[dt].id);
+        }
+      }
+    }
+    console.log('✅ Unduh Transaksi dari server:', transaksiData.length);
+    
+    // Kembalikan role user yang login
+    if (currentUserId) {
+      var userProfile = profilData.find(function(p) { return p.id === currentUserId; });
+      if (userProfile) {
+        localStorage.setItem("offline_user_role", userProfile.role);
+        localStorage.setItem("offline_user_name", userProfile.nama);
+        console.log('✅ Role user:', userProfile.role);
+      } else {
+        // Jika profile tidak ada, buat ulang dengan role yang disimpan
+        var newProfile = {
+          id: currentUserId,
+          nama: currentUserName || 'User',
+          role: currentUserRole || 'kasir',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          synced_at: new Date().toISOString()
+        };
+        await window.localDB.save('profiles', newProfile, currentUserId);
+        localStorage.setItem("offline_user_role", newProfile.role);
+      }
+    }
+    
+    Swal.close();
+    const now = new Date().toISOString();
+    localStorage.setItem('last_sync_produk', now);
+    localStorage.setItem('last_sync_kelas', now);
+    localStorage.setItem('last_sync_transaksi', now);
+    localStorage.setItem('last_full_sync', now);
+    localStorage.removeItem('pending_updates');
+
+    Swal.fire({
+      icon: 'success',
+      title: 'Unduh Selesai!',
+      text: 'Data berhasil diunduh dari server. Role Anda tetap ' + (localStorage.getItem("offline_user_role") === 'admin' ? 'Admin' : 'Kasir'),
+      timer: 2000,
+      showConfirmButton: false
+    });
+    
+    setTimeout(function() { location.reload(); }, 2000);
+    
+  } catch(error) {
+    Swal.close();
+    Swal.fire({
+      icon: 'error',
+      title: 'Unduh Gagal',
+      text: error.message,
+      confirmButtonText: 'Tutup'
+    });
+  }
+}
+
+  
+  async function resetOfflineData() {
+  if (!requireOfflineSyncAllowed()) {
+    return;
+  }
+
+  var confirm = await Swal.fire({
+    title: '⚠️ Reset Data Offline',
+    html: '<div style="text-align:left;">' +
+      '<p><i class="fas fa-exclamation-triangle" style="color:#e74c3c;"></i> <strong>PERHATIAN!</strong></p>' +
+      '<p>Reset data akan menghapus SEMUA data offline.</p>' +
+      '<p><strong>Yang akan dihapus:</strong></p>' +
+      '<ul>' +
+        '<li>📦 Semua produk</li>' +
+        '<li>🧾 Semua transaksi</li>' +
+        '<li>📚 Semua kelas</li>' +
+      '</ul>' +
+      '<p><i class="fas fa-info-circle"></i> <strong>Role user Anda akan dipertahankan!</strong></p>' +
+      '<p><strong>Rekomendasi:</strong> Lakukan backup terlebih dahulu!</p>' +
+      '</div>',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'Ya, Reset Data',
+    cancelButtonText: 'Batal',
+    confirmButtonColor: '#e74c3c'
+  });
+  
+  if (!confirm.isConfirmed) return;
+  
+  Swal.fire({
+    title: 'Menghapus Data...',
+    text: 'Mohon tunggu...',
+    allowOutsideClick: false,
+    didOpen: function() { Swal.showLoading(); }
+  });
+  
+  try {
+    var currentUserId = localStorage.getItem("offline_user_id");
+    var currentUserName = localStorage.getItem("offline_user_name");
+    var currentUserRole = localStorage.getItem("offline_user_role");
+    
+    await window.localDB.clear('produk');
+    await window.localDB.clear('transaksi');
+    await window.localDB.clear('detail_transaksi');
+    await window.localDB.clear('master_kelas');
+    
+    // Kembalikan profile user yang login
+    if (currentUserId) {
+      var userProfile = {
+        id: currentUserId,
+        nama: currentUserName || 'User',
+        role: currentUserRole || 'kasir',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        synced_at: new Date().toISOString()
+      };
+      await window.localDB.save('profiles', userProfile, currentUserId);
+      console.log('✅ Profile user disimpan kembali, role:', userProfile.role);
+    }
+    
+    Swal.close();
+    Swal.fire({
+      icon: 'success',
+      title: 'Reset Berhasil!',
+      text: 'Data offline telah dihapus. Role Anda tetap ' + (currentUserRole === 'admin' ? 'Admin' : 'Kasir'),
+      timer: 2000,
+      showConfirmButton: false
+    });
+    
+    setTimeout(function() { location.reload(); }, 2000);
+    
+  } catch(error) {
+    Swal.close();
+    Swal.fire({
+      icon: 'error',
+      title: 'Reset Gagal',
+      text: error.message,
+      confirmButtonText: 'Tutup'
+    });
+  }
+}
+
+  
+  async function fullResetAndDownload() {
+  if (!navigator.onLine) {
+    Swal.fire({
+      icon: 'warning',
+      title: 'Tidak Ada Koneksi',
+      text: 'Anda sedang offline. Sambungkan internet terlebih dahulu.',
+      confirmButtonText: 'Tutup'
+    });
+    return;
+  }
+
+  if (!requireOfflineSyncAllowed()) {
+    return;
+  }
+  
+  var confirm = await Swal.fire({
+    title: '⚠️ RESET TOTAL & UNDUH ULANG',
+    html: '<div style="text-align:left;">' +
+      '<p><i class="fas fa-exclamation-triangle" style="color:#e74c3c;"></i> <strong>PERINGATAN BERAT!</strong></p>' +
+      '<p>Tindakan ini akan:</p>' +
+      '<ul>' +
+        '<li>✅ Menghapus SEMUA data offline</li>' +
+        '<li>✅ Mengunduh ULANG data dari server</li>' +
+        '<li>✅ Mempertahankan role user Anda</li>' +
+      '</ul>' +
+      '<hr>' +
+      '<p>Ketik <strong>"RESET"</strong> untuk konfirmasi:</p>' +
+      '<input type="text" id="confirmText" placeholder="Ketik RESET" style="width:100%; padding:8px; margin-top:5px; border:1px solid #ddd; border-radius:8px;">' +
+      '</div>',
+    icon: 'error',
+    showCancelButton: true,
+    confirmButtonText: 'Ya, Reset Total',
+    cancelButtonText: 'Batal',
+    confirmButtonColor: '#e74c3c',
+    preConfirm: function() {
+      var input = document.getElementById('confirmText');
+      if (!input || input.value !== 'RESET') {
+        Swal.showValidationMessage('Ketik "RESET" untuk konfirmasi');
+        return false;
+      }
+      return true;
+    }
+  });
+  
+  if (!confirm.isConfirmed) return;
+  
+  Swal.fire({
+    title: 'Meriset & Mengunduh...',
+    text: 'Menghapus data lama...',
+    allowOutsideClick: false,
+    didOpen: function() { Swal.showLoading(); }
+  });
+  
+  try {
+    // Simpan data user yang login SEBELUM reset
+    var currentUserId = localStorage.getItem("offline_user_id");
+    var currentUserEmail = localStorage.getItem("offline_user_email");
+    var currentUserName = localStorage.getItem("offline_user_name");
+    var currentUserRole = localStorage.getItem("offline_user_role");
+    
+    console.log('📝 Menyimpan data user sebelum reset:', { 
+      userId: currentUserId, 
+      name: currentUserName, 
+      role: currentUserRole 
+    });
+    
+    // Hapus semua data
+    await window.localDB.clear('produk');
+    await window.localDB.clear('transaksi');
+    await window.localDB.clear('detail_transaksi');
+    await window.localDB.clear('profiles');
+    await window.localDB.clear('master_kelas');
+    
+    // Unduh ulang dari server (with kelas associations)
+    var produkRes = await window.syncManager.fetchProdukWithKelas('*');
+    var produkData = produkRes.data || [];
+    for (var i = 0; i < produkData.length; i++) {
+      await window.localDB.save('produk', produkData[i], produkData[i].id);
+    }
+    
+    var kelasRes = await sb.from('master_kelas').select('*');
+    var kelasData = kelasRes.data || [];
+    for (var j = 0; j < kelasData.length; j++) {
+      await window.localDB.save('master_kelas', kelasData[j], kelasData[j].id);
+    }
+    
+    // Unduh profiles dari server
+    var profilRes = await sb.from('profiles').select('*');
+    var profilData = profilRes.data || [];
+    for (var k = 0; k < profilData.length; k++) {
+      await window.localDB.save('profiles', profilData[k], profilData[k].id);
+    }
+    
+    // ========== TAMBAHAN: UNDUH SEMUA TRANSAKSI DAN DETAIL ==========
+    var transaksiRes = await sb.from('transaksi').select('*, detail_transaksi(*)').order('created_at', { ascending: false });
+    var transaksiData = transaksiRes.data || [];
+    for (var t = 0; t < transaksiData.length; t++) {
+      await window.localDB.save('transaksi', transaksiData[t], transaksiData[t].id);
+      if (transaksiData[t].detail_transaksi && Array.isArray(transaksiData[t].detail_transaksi)) {
+        for (var dt = 0; dt < transaksiData[t].detail_transaksi.length; dt++) {
+          await window.localDB.save('detail_transaksi', transaksiData[t].detail_transaksi[dt], transaksiData[t].detail_transaksi[dt].id);
+        }
+      }
+    }
+    console.log('✅ Unduh Transaksi dari server:', transaksiData.length);
+    
+    // ===== PENTING: KEMBALIKAN DATA USER YANG LOGIN =====
+    if (currentUserId) {
+      // Cari profile user yang sedang login dari data yang baru diunduh
+      var userProfile = profilData.find(function(p) { return p.id === currentUserId; });
+      
+      if (userProfile) {
+        // Update localStorage dengan data terbaru dari server
+        localStorage.setItem("offline_user_id", userProfile.id);
+        localStorage.setItem("offline_user_name", userProfile.nama || currentUserName);
+        localStorage.setItem("offline_user_role", userProfile.role || 'kasir');
+        
+        console.log('✅ Role user dipulihkan dari server:', userProfile.role);
+      } else {
+        // Jika profile tidak ditemukan di server, buat ulang
+        var { data: authUser } = await sb.auth.getUser();
+        if (authUser && authUser.user) {
+          var newProfile = {
+            id: authUser.user.id,
+            nama: currentUserName || authUser.user.email,
+            role: currentUserRole || 'kasir',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            synced_at: new Date().toISOString()
+          };
+          
+          // Simpan ke Supabase
+          await sb.from('profiles').upsert(newProfile, { onConflict: 'id' });
+          
+          // Simpan ke localStorage
+          localStorage.setItem("offline_user_id", newProfile.id);
+          localStorage.setItem("offline_user_name", newProfile.nama);
+          localStorage.setItem("offline_user_role", newProfile.role);
+          
+          // Simpan ke IndexedDB
+          await window.localDB.save('profiles', newProfile, newProfile.id);
+          
+          console.log('✅ Profile user dibuat ulang:', newProfile);
+        }
+      }
+    }
+    
+    Swal.close();
+    const now = new Date().toISOString();
+    localStorage.setItem('last_sync_produk', now);
+    localStorage.setItem('last_sync_kelas', now);
+    localStorage.setItem('last_sync_transaksi', now);
+    localStorage.setItem('last_full_sync', now);
+    localStorage.removeItem('pending_updates');
+
+    Swal.fire({
+      icon: 'success',
+      title: 'Reset & Unduh Selesai!',
+      text: 'Data berhasil direset dan diunduh ulang. Role Anda tetap ' + (localStorage.getItem("offline_user_role") === 'admin' ? 'Admin' : 'Kasir'),
+      timer: 2000,
+      showConfirmButton: false
+    });
+    
+    setTimeout(function() { location.reload(); }, 2000);
+    
+  } catch(error) {
+    Swal.close();
+    Swal.fire({
+      icon: 'error',
+      title: 'Reset Gagal',
+      text: error.message,
+      confirmButtonText: 'Tutup'
+    });
+  }
+}
+
+// ============================================
+// INITIALIZE APP - DENGAN SYNC NOTIFICATION
+// ============================================
+(function() {
+  // Panggil fungsi async segera
+  (async function initializeApp() {
+    try {
+      var isOnline = navigator.onLine;
+      console.log('🚀 Starting app initialization... (online:', isOnline + ')');
+      
+      // 1. Refresh role dari server (hanya jika online)
+      if (isOnline) {
+        try {
+          const { data: { user } } = await sb.auth.getUser();
+          if (user) {
+            const { data: profile } = await sb
+              .from('profiles')
+              .select('role, nama')
+              .eq('id', user.id)
+              .maybeSingle();
+            
+            if (profile) {
+              localStorage.setItem("offline_user_role", profile.role);
+              localStorage.setItem("offline_user_name", profile.nama);
+              localStorage.setItem("offline_user_id", user.id);
+            }
+          }
+        } catch(e) {
+          console.warn('Refresh role error:', e);
+        }
+      }
+      
+      // 2. Ambil data user dari localStorage
+      var userId = localStorage.getItem("offline_user_id");
+      var userName = localStorage.getItem("offline_user_name") || "User";
+      var userRole = localStorage.getItem("offline_user_role") || "kasir";
+      
+      // 3. Set global variables
+      window.currentUser = { id: userId };
+      window.currentRole = userRole;
+      window.currentUserRole = userRole;
+      window.currentUserName = userName;
+      
+      // 4. Tampilkan di UI
+      const namaElement = document.getElementById("namaUser");
+      const roleElement = document.getElementById("roleUser");
+      const menuNameElement = document.getElementById("userMenuName");
+      
+      if (namaElement) namaElement.innerText = userName;
+      if (roleElement) roleElement.innerText = userRole === 'admin' ? 'Administrator' : 'Kasir';
+      if (menuNameElement) menuNameElement.innerText = userName;
+      
+      // 5. Sembunyikan menu admin jika role bukan admin
+      const adminMenus = ['menu-role', 'menu-data', 'menu-admin-devices', 'menu-master-kelas'];
+      for (var i = 0; i < adminMenus.length; i++) {
+        var el = document.getElementById(adminMenus[i]);
+        if (el) {
+          el.style.display = (userRole === 'admin') ? 'flex' : 'none';
+        }
+      }
+      
+      // 5b. Kasir hanya lihat: Kasir, Laporan, Laporan Master (sembunyikan Dashboard, Produk)
+      if (userRole !== 'admin') {
+        const kasirHiddenMenus = ['menu-dashboard', 'menu-produk'];
+        for (var j = 0; j < kasirHiddenMenus.length; j++) {
+          var kel = document.getElementById(kasirHiddenMenus[j]);
+          if (kel) kel.style.display = 'none';
+        }
+      }
+      
+      // 6. Inisialisasi database offline
+      if (window.localDB && window.localDB.initDB) {
+        await window.localDB.initDB();
+      }
+      
+      // 7. Inisialisasi offline core
+      if (window.offlineCore && window.offlineCore.init) {
+        await window.offlineCore.init();
+      }
+      
+      // 8. Populate kelas map globally (dari lokal saja, cepat)
+      if (typeof refreshKelasData === 'function') {
+        await refreshKelasData();
+      }
+      
+      // 9. Cek data awal — hanya sync jika online DAN cache kosong
+      var produk = [];
+      if (window.localDB && window.localDB.getAll) {
+        produk = await window.localDB.getAll('produk') || [];
+      }
+      
+      if (produk.length === 0 && isOnline) {
+        var loadingToast = document.createElement('div');
+        loadingToast.className = 'sync-toast';
+        loadingToast.innerHTML = '<i class="fas fa-sync fa-spin"></i> Menyiapkan data offline...';
+        document.body.appendChild(loadingToast);
+        setTimeout(function() { loadingToast.classList.add('show'); }, 10);
+        
+        if (window.offlineCore && window.offlineCore.syncAll) {
+          await window.offlineCore.syncAll();
+        }
+        
+        loadingToast.classList.remove('show');
+        setTimeout(function() {
+          if (loadingToast.parentNode) loadingToast.parentNode.removeChild(loadingToast);
+        }, 300);
+      }
+      
+      // 10. Load halaman sesuai role
+      if (userRole === 'admin') {
+        if (typeof loadDashboard === 'function') loadDashboard();
+      } else {
+        if (typeof loadKasir === 'function') loadKasir();
+      }
+      
+      console.log('✅ App initialized, role:', userRole, '| produk:', produk.length);
+      
+      // ============================================
+      // SYNC NOTIFICATION - SETELAH SEMUA INIT SELESAI
+      // ============================================
+      if (window.syncNotification) {
+        console.log('🔔 Setting up sync notification...');
+        
+        // Tambahkan menu ke sidebar
+        if (typeof window.syncNotification.addToSidebar === 'function') {
+          window.syncNotification.addToSidebar();
+        }
+        
+        // Cek update saat pertama kali buka (hanya admin, jika online)
+        if (isOnline && userRole === 'admin') {
+          setTimeout(function() {
+            window.syncNotification.checkForUpdates().then(function(updates) {
+              if (updates && updates.hasUpdates) {
+                window.syncNotification.showUpdateNotification(updates);
+              }
+            }).catch(function(err) {
+              console.warn('Check updates error:', err);
+            });
+          }, 3000);
+        }
+      } else {
+        console.warn('⚠️ syncNotification not loaded');
+      }
+      
+    } catch(error) {
+      console.error('Init error:', error);
+    }
+  })();
+})();
+
+
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/service-worker.js')
+    .then(reg => {
+      reg.update();
+
+      setInterval(() => {
+        reg.update();
+      }, 60000);
+    });
+
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    window.location.reload();
+  });
+}
+</script>
+
+
+
+<style>
+  .window-controls button { background: transparent; border: none; cursor: pointer; padding: 5px; border-radius: 5px; }
+  .window-controls button:hover { background: rgba(26, 92, 62, 0.1); }
+  
+  .sync-toast {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: #1a5c3e;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 50px;
+    font-size: 0.85rem;
+    z-index: 10000;
+    opacity: 0;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+  }
+  
+  .sync-toast.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
+
+  /* Admin device management theme */
+  #adminDevicesOverlay {
+    backdrop-filter: blur(2px);
+    background: rgba(18, 42, 20, 0.72);
+    z-index: 9998;
+  }
+
+  #adminDevicesPanel {
+    position: fixed;
+    top: 8%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 85%;
+    max-width: 940px;
+    min-height: 340px;
+    background: linear-gradient(180deg, #f5f3e7 0%, #f3f1de 100%);
+    border: 2px solid #3c6b32;
+    border-radius: 24px;
+    box-shadow: 0 22px 48px rgba(26, 58, 25, 0.30);
+    z-index: 9999;
+    padding: 22px;
+    overflow: hidden;
+  }
+
+  #adminDevicesPanel .admin-devices-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(60, 107, 50, 0.18);
+    margin-bottom: 16px;
+  }
+
+  #adminDevicesPanel .admin-devices-header h3 {
+    margin: 0;
+    color: #214c2f;
+    font-size: 1.4rem;
+  }
+
+  #adminDevicesContainer {
+    max-height: calc(80vh - 120px);
+    overflow-y: auto;
+  }
+
+  #adminDevicesContainer table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #ffffff;
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 8px 18px rgba(66, 96, 62, 0.12);
+  }
+
+  #adminDevicesContainer th,
+  #adminDevicesContainer td {
+    padding: 12px 14px;
+    border-bottom: 1px solid #e4dfcf;
+    font-size: 0.95rem;
+    color: #2d3a2a;
+  }
+
+  #adminDevicesContainer th {
+    background: linear-gradient(135deg, #305e3b, #b99f3b);
+    color: #fafaf2;
+    font-weight: 700;
+    text-align: left;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+  }
+
+  #adminDevicesContainer tr:nth-child(even) {
+    background: #fbfaf4;
+  }
+
+  #adminDevicesContainer tr:hover {
+    background: #eef2dd;
+  }
+
+  .admin-device-action {
+    border-radius: 10px;
+    padding: 8px 12px;
+    font-size: 0.88rem;
+    font-weight: 700;
+    border: none;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    margin-right: 6px;
+  }
+
+  .admin-device-action:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 18px rgba(45, 92, 47, 0.18);
+  }
+
+  .admin-device-action.approve {
+    background: #2e8348;
+    color: #fff;
+  }
+
+  .admin-device-action.revoke {
+    background: #d4af37;
+    color: #213216;
+  }
+
+  .admin-device-action.delete {
+    background: #c0392b;
+    color: #fff;
+  }
+
+  .admin-device-close-btn {
+    background: #3c6b32;
+    color: #fff;
+    border: none;
+    padding: 8px 14px;
+  }
+
+  .admin-device-notif {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 10001;
+    background: linear-gradient(135deg, #2b7b3c, #d4af37);
+    color: #ffffff;
+    border-radius: 16px;
+    padding: 14px 18px;
+    box-shadow: 0 12px 30px rgba(15, 45, 18, 0.25);
+    font-weight: 700;
+  }
+
+  .admin-device-notif a {
+    color: #ffffff;
+    text-decoration: none;
+  }
+
+  .admin-device-notif a:hover {
+    text-decoration: underline;
+  }
+
+  .admin-devices-page {
+    padding: 20px;
+    border: 1px solid rgba(48, 114, 60, 0.15);
+    border-radius: 20px;
+    background: linear-gradient(180deg, #fbf8ef 0%, #f4f1e5 100%);
+    box-shadow: 0 12px 30px rgba(25, 61, 25, 0.08);
+  }
+
+  .admin-devices-page .admin-devices-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    border-bottom: 1px solid rgba(60, 107, 50, 0.18);
+    padding-bottom: 16px;
+    margin-bottom: 18px;
+  }
+
+  .admin-devices-page .admin-devices-header h3 {
+    margin: 0;
+    color: #214c2f;
+  }
+
+  .admin-devices-page .admin-devices-header .subtitle {
+    margin: 6px 0 0;
+    color: #4a573f;
+    font-size: 0.95rem;
+  }
+
+  .admin-devices-page .btn {
+    border-radius: 10px;
+  }
+
+  .admin-devices-page .table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+  }
+
+  .admin-devices-page th,
+  .admin-devices-page td {
+    padding: 12px 14px;
+    border: 1px solid #e5dfcc;
+    color: #2f3f2e;
+  }
+
+  .admin-devices-page th {
+    background: linear-gradient(135deg, #3c6b32, #b99f3b);
+    color: #fafaf2;
+    font-weight: 700;
+  }
+
+  .admin-devices-page tr:nth-child(even) {
+    background: #faf7ed;
+  }
+
+  .admin-devices-page tr:hover {
+    background: #eef2dd;
+  }
+
+  .data-card {
+    transition: all 0.3s ease;
+    border: 1px solid #e8e0d0;
+    border-radius: 12px;
+    background: #fefcf8;
+  }
+  
+  .data-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 5px 15px rgba(26, 92, 62, 0.15);
+    border-color: #d4af37;
+  }
+  
+  .role-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  
+  .role-table th, .role-table td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #e8e0d0;
+  }
+  
+  .role-table th {
+    background: #1a5c3e;
+    color: white;
+  }
+  
+  .btn-sm {
+    padding: 5px 10px;
+    font-size: 12px;
+  }
+  
+  .role-badge-admin, .role-badge-kasir {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  
+  .role-badge-admin {
+    background: #e74c3c;
+    color: white;
+  }
+  
+  .role-badge-kasir {
+    background: #1a5c3e;
+    color: white;
+  }
+  
+  .swal2-confirm, .swal2-cancel {
+    font-family: 'Segoe UI', sans-serif;
+  }
+  
+  /* Input group style */
+  .input-group {
+    position: relative;
+    display: inline-block;
+  }
+  
+  .input-group i {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #1a5c3e;
+    z-index: 1;
+  }
+  
+  .input-group input,
+  .input-group select {
+    padding-left: 35px !important;
+    border-radius: 8px;
+    border: 1px solid #e8e0d0;
+    font-size: 14px;
+    background: #fefcf8;
+    cursor: pointer;
+  }
+  
+  .input-group input:focus,
+  .input-group select:focus {
+    border-color: #d4af37;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.2);
+  }
+  
+  .input-group select {
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%231a5c3e' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'></polyline></svg>");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 30px !important;
+  }
+  
+  /* Form group style untuk keranjang */
+  .cart-footer .form-group {
+    margin-bottom: 15px;
+  }
+  
+  .cart-footer .form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 600;
+    color: #1a5c3e;
+    font-size: 13px;
+  }
+  
+  .cart-footer .form-group label i {
+    color: #d4af37;
+    margin-right: 5px;
+  }
+  
+  .cart-footer .form-group input {
+    width: 100%;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid #e8e0d0;
+    font-size: 14px;
+    transition: border-color 0.3s ease;
+    background: #fefcf8;
+  }
+  
+  .cart-footer .form-group input:focus {
+    outline: none;
+    border-color: #d4af37;
+    box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.2);
+  }
+  
+  /* ==================== LAPORAN MODERN CSS ==================== */
+  
+  .laporan-card {
+    background: white;
+    border-radius: 24px;
+    padding: 28px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    border: 1px solid rgba(212, 175, 55, 0.15);
+  }
+  
+  .laporan-header h2 {
+    font-size: 1.8rem;
+    margin-bottom: 8px;
+    color: #1a5c3e;
+  }
+  
+  .laporan-header h2 i {
+    color: #d4af37;
+    margin-right: 8px;
+  }
+  
+  .laporan-subtitle {
+    color: #7f8c8d;
+    margin-bottom: 24px;
+  }
+  
+  .filter-section {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    background: #f8faf5;
+    padding: 20px;
+    border-radius: 16px;
+    margin-bottom: 28px;
+    border: 1px solid #e8e0d0;
+  }
+  
+  .filter-group {
+    flex: 1;
+    min-width: 180px;
+  }
+  
+  .filter-group label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: #1a5c3e;
+    margin-bottom: 6px;
+  }
+  
+  .filter-group label i {
+    margin-right: 6px;
+    font-size: 11px;
+    color: #d4af37;
+  }
+  
+  .filter-input {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid #e8e0d0;
+    border-radius: 12px;
+    font-size: 14px;
+    transition: all 0.3s ease;
+    background: #fefcf8;
+  }
+  
+  .filter-input:focus {
+    outline: none;
+    border-color: #d4af37;
+    box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.1);
+  }
+  
+  .filter-actions {
+    display: flex;
+    gap: 12px;
+  }
+  
+  .btn-filter, .btn-export {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+  
+  .btn-filter {
+    background: #1a5c3e;
+    color: white;
+  }
+  
+  .btn-filter:hover {
+    background: #0f3b2c;
+    transform: translateY(-2px);
+  }
+  
+  .btn-export {
+    background: #27ae60;
+    color: white;
+  }
+  
+  .btn-export:hover {
+    background: #219a52;
+    transform: translateY(-2px);
+  }
+  
+  /* Stats Grid */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 20px;
+    margin-bottom: 32px;
+  }
+  
+  .stat-card {
+    background: white;
+    border-radius: 20px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    border: 1px solid #e8e0d0;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  }
+  
+  .stat-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(26, 92, 62, 0.12);
+    border-color: #d4af37;
+  }
+  
+  .stat-icon {
+    width: 54px;
+    height: 54px;
+    background: linear-gradient(135deg, #1a5c3e, #0f3b2c);
+    border-radius: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .stat-icon i {
+    font-size: 26px;
+    color: white;
+  }
+  
+  .stat-omzet .stat-icon { background: linear-gradient(135deg, #1a5c3e, #0f3b2c); }
+  .stat-laba .stat-icon { background: linear-gradient(135deg, #27ae60, #1e8449); }
+  .stat-transaksi .stat-icon { background: linear-gradient(135deg, #e67e22, #d35400); }
+  .stat-rata .stat-icon { background: linear-gradient(135deg, #8e44ad, #6c3483); }
+  
+  .stat-info {
+    flex: 1;
+  }
+  
+  .stat-label {
+    font-size: 12px;
+    color: #7f8c8d;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  
+  .stat-value {
+    display: block;
+    font-size: 24px;
+    font-weight: 700;
+    color: #1a5c3e;
+    margin: 6px 0 4px;
+  }
+  
+  .stat-trend {
+    font-size: 11px;
+    color: #27ae60;
+  }
+  
+  .stat-trend.success { color: #27ae60; }
+  
+  /* Table Styles */
+  .transaksi-table-wrapper {
+    background: white;
+    border-radius: 20px;
+    overflow: hidden;
+    border: 1px solid #e8e0d0;
+  }
+  
+  .table-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    background: #f8faf5;
+    border-bottom: 1px solid #e8e0d0;
+  }
+  
+  .table-header h3 {
+    font-size: 1.1rem;
+    margin: 0;
+    color: #1a5c3e;
+  }
+  
+  .table-header h3 i {
+    color: #d4af37;
+    margin-right: 8px;
+  }
+  
+  .table-count {
+    font-size: 13px;
+    color: #7f8c8d;
+    background: #e8e0d0;
+    padding: 4px 12px;
+    border-radius: 20px;
+  }
+  
+  .modern-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  
+  .modern-table thead tr {
+    background: #eef5f0;
+  }
+  
+  .modern-table th {
+    padding: 16px 12px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #1a5c3e;
+    text-align: left;
+    border-bottom: 1px solid #e8e0d0;
+  }
+  
+  .modern-table td {
+    padding: 14px 12px;
+    font-size: 13px;
+    color: #334155;
+    border-bottom: 1px solid #f1f5f9;
+  }
+  
+  .modern-table tr:hover {
+    background: #f8faf5;
+  }
+  
+  .text-center { text-align: center; }
+  .text-right { text-align: right; }
+  
+  .date-cell {
+    font-family: monospace;
+    font-size: 12px;
+  }
+  
+  .customer-name {
+    background: #fef3c7;
+    color: #d97706;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 500;
+    display: inline-block;
+  }
+  
+  .amount {
+    font-weight: 700;
+    color: #059669;
+  }
+  
+  .profit {
+    font-weight: 500;
+    color: #1a5c3e;
+  }
+  
+  .item-badge {
+    background: #e8e0d0;
+    color: #1a5c3e;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  
+  .action-btn {
+    background: none;
+    border: 1px solid #e8e0d0;
+    padding: 6px 14px;
+    border-radius: 8px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  
+  .action-btn:hover {
+    background: #1a5c3e;
+    color: white;
+    border-color: #1a5c3e;
+  }
+  
+  /* Nota Modal */
+  .nota-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(4px);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  
+  .nota-container {
+    background: white;
+    border-radius: 28px;
+    max-width: 500px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    animation: slideUp 0.3s ease;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+    border: 1px solid rgba(212, 175, 55, 0.2);
+  }
+  
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  
+  .nota-header {
+    background: linear-gradient(135deg, #1a5c3e, #0f3b2c);
+    padding: 20px;
+    border-radius: 28px 28px 0 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .nota-logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  
+  .logo-circle {
+    width: 48px;
+    height: 48px;
+    background: #d4af37;
+    border-radius: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .logo-circle i {
+    font-size: 24px;
+    color: #1a5c3e;
+  }
+  
+  .logo-text h2 {
+    font-size: 16px;
+    margin: 0;
+    color: white;
+  }
+  
+  .logo-text p {
+    font-size: 10px;
+    margin: 2px 0 0;
+    color: rgba(255,255,255,0.7);
+  }
+  
+  .nota-close {
+    width: 32px;
+    height: 32px;
+    background: rgba(255,255,255,0.2);
+    border: none;
+    border-radius: 16px;
+    color: white;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  
+  .nota-close:hover {
+    background: rgba(255,255,255,0.3);
+    transform: scale(1.05);
+  }
+  
+  .nota-body {
+    padding: 24px;
+  }
+  
+  .nota-title-section {
+    text-align: center;
+    margin-bottom: 20px;
+  }
+  
+  .nota-title-section h3 {
+    margin: 0;
+    color: #1a5c3e;
+    font-size: 18px;
+  }
+  
+  .nota-badge {
+    display: inline-block;
+    background: #d4af37;
+    color: #1a5c3e;
+    font-size: 11px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    margin-top: 8px;
+    font-weight: 600;
+  }
+  
+  .nota-info-grid {
+    background: #f8faf5;
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 20px;
+    border: 1px solid #e8e0d0;
+  }
+  
+  .info-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  
+  .info-item:last-child {
+    margin-bottom: 0;
+  }
+  
+  .info-item i {
+    width: 32px;
+    color: #d4af37;
+    font-size: 16px;
+  }
+  
+  .info-item div {
+    flex: 1;
+  }
+  
+  .info-label {
+    display: block;
+    font-size: 10px;
+    color: #7f8c8d;
+    margin-bottom: 2px;
+  }
+  
+  .info-value {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1a5c3e;
+  }
+  
+  .nota-divider {
+    height: 1px;
+    background: linear-gradient(to right, transparent, #e8e0d0, transparent);
+    margin: 20px 0;
+  }
+  
+  .nota-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  
+  .nota-table th {
+    font-size: 11px;
+    color: #7f8c8d;
+    padding: 8px 4px;
+    border-bottom: 1px solid #e8e0d0;
+  }
+  
+  .nota-table td {
+    padding: 10px 4px;
+    font-size: 12px;
+    border-bottom: 1px solid #f1f5f9;
+  }
+  
+  .nota-table .total-row td {
+    border-top: 2px solid #e8e0d0;
+    border-bottom: none;
+    padding-top: 12px;
+  }
+  
+  .total-amount {
+    font-size: 16px;
+    font-weight: 700;
+    color: #1a5c3e;
+  }
+  
+  .nota-footer-actions {
+    display: flex;
+    gap: 12px;
+    margin: 24px 0 20px;
+  }
+  
+  .share-wa-btn, .print-nota-btn {
+    flex: 1;
+    padding: 12px;
+    border: none;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  
+  .share-wa-btn {
+    background: #25D366;
+    color: white;
+  }
+  
+  .share-wa-btn:hover {
+    background: #128C7E;
+    transform: translateY(-2px);
+  }
+  
+  .print-nota-btn {
+    background: #1a5c3e;
+    color: white;
+  }
+  
+  .print-nota-btn:hover {
+    background: #0f3b2c;
+    transform: translateY(-2px);
+  }
+  
+  .nota-thanks {
+    text-align: center;
+    margin-top: 16px;
+  }
+  
+  .nota-thanks p {
+    margin: 0;
+    font-size: 11px;
+    color: #7f8c8d;
+  }
+  
+  .nota-thanks .small {
+    font-size: 9px;
+    margin-top: 4px;
+  }
+  
+  .text-center { text-align: center; }
+  .text-right { text-align: right; }
+  
+  /* Empty & Error States dengan nuansa hijau */
+  .empty-state, .error-state, .loading-state {
+    text-align: center;
+    padding: 60px 20px;
+  }
+  
+  .empty-state i, .error-state i {
+    font-size: 64px;
+    color: #cbd5e1;
+    margin-bottom: 16px;
+  }
+  
+  .error-state i {
+    color: #e74c3c;
+  }
+  
+  .empty-state h3, .error-state h3 {
+    margin-bottom: 8px;
+    color: #1a5c3e;
+  }
+  
+  .retry-btn {
+    margin-top: 16px;
+    padding: 10px 24px;
+    background: #1a5c3e;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+  }
+  
+  .retry-btn:hover {
+    background: #0f3b2c;
+  }
+  
+  /* Scrollbar hijau */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: #e8e0d0;
+    border-radius: 10px;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: #1a5c3e;
+    border-radius: 10px;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background: #d4af37;
+  }
+
+  /* ==================== CSS UNTUK MANAJEMEN ROLE ==================== */
+
+/* Card header dengan flex layout */
+.role-management-card .card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+.role-management-card .card-header .header-left {
+  flex: 1;
+}
+
+.role-management-card .card-header .header-right {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+/* Online status badge hijau */
+.online-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 30px;
+  font-size: 13px;
+  font-weight: 500;
+  background: #d4edda !important;
+  color: #155724 !important;
+  border: 1px solid #c3e6cb !important;
+}
+
+.online-status-badge i {
+  font-size: 14px;
+}
+
+/* Tombol Edit (Hijau) */
+.btn-edit {
+  background: linear-gradient(135deg, #27ae60, #1e8449);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-right: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-edit:hover {
+  background: linear-gradient(135deg, #1e8449, #196f3d);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(39, 174, 96, 0.3);
+}
+
+.btn-edit:active {
+  transform: translateY(0);
+}
+
+/* Tombol Delete (Merah) */
+.btn-delete {
+  background: linear-gradient(135deg, #e74c3c, #c0392b);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-delete:hover {
+  background: linear-gradient(135deg, #c0392b, #a93226);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3);
+}
+
+.btn-delete:active {
+  transform: translateY(0);
+}
+
+/* Tombol Disabled */
+.btn-disabled {
+  background: #bdc3c7;
+  color: #7f8c8d;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: not-allowed;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Badge untuk role - ADMIN (WARNA EMAS) */
+.role-badge-admin {
+  background: linear-gradient(135deg, #f1c40f, #f39c12);
+  color: #7d6608;
+  display: inline-block;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  border: 1px solid rgba(241, 196, 15, 0.3);
+}
+
+/* Badge untuk role - KASIR (WARNA HIJAU) */
+.role-badge-kasir {
+  background: linear-gradient(135deg, #27ae60, #1e8449);
+  color: white;
+  display: inline-block;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Badge untuk user yang sedang login */
+.current-user-badge {
+  background: #f39c12;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: 600;
+  margin-left: 6px;
+  display: inline-block;
+}
+
+/* Info box */
+.info-box {
+  background: #e8f4f8;
+  border-left: 4px solid #3498db;
+  padding: 15px;
+  border-radius: 10px;
+  margin-top: 20px;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.info-box i {
+  color: #3498db;
+  font-size: 20px;
+  margin-top: 2px;
+}
+
+.info-box div {
+  flex: 1;
+  font-size: 13px;
+  color: #2c3e50;
+}
+
+/* Styling untuk role badge di info box */
+.info-box .role-badge-admin,
+.info-box .role-badge-kasir {
+  display: inline-block;
+  padding: 2px 8px;
+  font-size: 11px;
+}
+
+/* Table styling untuk role */
+.role-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.role-table thead tr {
+  background: linear-gradient(135deg, #1a5c3e, #0f3b2c);
+}
+
+.role-table th {
+  padding: 14px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: white;
+  text-align: left;
+}
+
+.role-table td {
+  padding: 12px;
+  font-size: 13px;
+  color: #334155;
+  border-bottom: 1px solid #e8e0d0;
+}
+
+.role-table tr:hover {
+  background: #f8faf5;
+}
+
+/* Text alignment */
+.text-center {
+  text-align: center;
+}
+
+/* Responsif untuk mobile */
+@media (max-width: 768px) {
+  .role-management-card .card-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .role-management-card .card-header .header-right {
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+  
+  .online-status-badge {
+    font-size: 11px;
+    padding: 6px 12px;
+  }
+  
+  .btn-edit, .btn-delete, .btn-disabled {
+    padding: 6px 12px;
+    font-size: 11px;
+  }
+  
+  .role-table th, .role-table td {
+    padding: 8px;
+    font-size: 11px;
+  }
+  
+  .role-badge-admin, .role-badge-kasir {
+    padding: 3px 8px;
+    font-size: 10px;
+  }
+}
+
+/* Tombol Tambah User */
+.btn-success {
+  background: linear-gradient(135deg, #27ae60, #1e8449);
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-success:hover {
+  background: linear-gradient(135deg, #1e8449, #196f3d);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(39, 174, 96, 0.3);
+}
+
+/* Animasi fade in untuk tabel */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.role-management-card {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* ==================== MOBILE RESPONSIVE ==================== */
+
+/* Tablet Portrait & Mobile Landscape */
+@media (max-width: 768px) {
+  /* Laporan Card */
+  .laporan-card {
+    padding: 16px;
+    border-radius: 16px;
+  }
+  
+  .laporan-header h2 {
+    font-size: 1.3rem;
+  }
+  
+  /* Filter Section */
+  .filter-section {
+    flex-direction: column;
+    gap: 12px;
+    padding: 14px;
+  }
+  
+  .filter-group {
+    min-width: 100%;
+  }
+  
+  .filter-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+  
+  .btn-filter, .btn-export {
+    width: 100%;
+    text-align: center;
+    justify-content: center;
+  }
+  
+  /* Stats Grid */
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+  
+  .stat-card {
+    padding: 14px;
+    }
+  
+  .stat-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+  }
+  
+  .stat-icon i {
+    font-size: 20px;
+  }
+  
+  .stat-value {
+    font-size: 18px;
+  }
+  
+  .stat-label {
+    font-size: 10px;
+  }
+  
+  /* Table Header */
+  .table-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 14px 16px;
+  }
+  
+  /* Modern Table */
+  .modern-table th {
+    padding: 10px 8px;
+    font-size: 11px;
+  }
+  
+  .modern-table td {
+    padding: 10px 8px;
+    font-size: 12px;
+  }
+  
+  /* Nota Modal */
+  .nota-container {
+    max-width: 95%;
+    border-radius: 20px;
+  }
+  
+  .nota-header {
+    padding: 16px;
+    border-radius: 20px 20px 0 0;
+  }
+  
+  .nota-body {
+    padding: 16px;
+  }
+  
+  .nota-footer-actions {
+    flex-direction: column;
+  }
+  
+  /* Admin Devices Panel */
+  #adminDevicesPanel {
+    width: 95%;
+    padding: 14px;
+    border-radius: 16px;
+    top: 3%;
+  }
+  
+  #adminDevicesPanel .admin-devices-header {
+    flex-wrap: wrap;
+  }
+  
+  #adminDevicesPanel .admin-devices-header h3 {
+    font-size: 1.1rem;
+  }
+  
+  #adminDevicesContainer th,
+  #adminDevicesContainer td {
+    padding: 8px 10px;
+    font-size: 0.82rem;
+  }
+  
+  /* Admin Devices Page */
+  .admin-devices-page {
+    padding: 14px;
+    border-radius: 14px;
+  }
+  
+  .admin-devices-page .admin-devices-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  
+  /* Data Cards */
+  .data-card {
+    padding: 12px !important;
+  }
+  
+  /* Info Box */
+  .info-box {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  /* Customer name badge */
+  .customer-name {
+    font-size: 10px;
+    padding: 3px 8px;
+  }
+  
+  /* Amount & item badges */
+  .item-badge {
+    font-size: 10px;
+    padding: 3px 8px;
+  }
+  
+  /* Action buttons */
+  .action-btn {
+    font-size: 11px;
+    padding: 5px 10px;
+  }
+  
+  /* Sync toast */
+  .sync-toast {
+    font-size: 0.8rem;
+    padding: 8px 16px;
+    bottom: 20px;
+  }
+  
+  /* Admin device actions */
+  .admin-device-action {
+    padding: 6px 10px;
+    font-size: 0.8rem;
+  }
+  
+  /* Admin device notification */
+  .admin-device-notif {
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
+    font-size: 0.85rem;
+  }
+}
+
+/* Mobile Portrait */
+@media (max-width: 480px) {
+  /* Laporan Card */
+  .laporan-card {
+    padding: 12px;
+    border-radius: 12px;
+  }
+  
+  .laporan-header h2 {
+    font-size: 1.1rem;
+  }
+  
+  .laporan-subtitle {
+    font-size: 0.8rem;
+    margin-bottom: 16px;
+  }
+  
+  /* Filter Section */
+  .filter-section {
+    padding: 10px;
+    border-radius: 12px;
+    margin-bottom: 16px;
+  }
+  
+  .filter-group label {
+    font-size: 10px;
+  }
+  
+  .filter-input {
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+  
+  /* Stats Grid - single column */
+  .stats-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  
+  .stat-card {
+    padding: 12px;
+    }
+  
+  .stat-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+  }
+  
+  .stat-icon i {
+    font-size: 18px;
+  }
+  
+  .stat-value {
+    font-size: 16px;
+  }
+  
+  .stat-label {
+    font-size: 9px;
+  }
+  
+  /* Modern Table */
+  .modern-table th {
+    padding: 8px 6px;
+    font-size: 10px;
+  }
+  
+  .modern-table td {
+    padding: 8px 6px;
+    font-size: 11px;
+  }
+  
+  /* Table header */
+  .table-header {
+    padding: 12px;
+  }
+  
+  .table-header h3 {
+    font-size: 0.95rem;
+  }
+  
+  /* Nota Modal - full screen */
+  .nota-modal {
+    padding: 0;
+  }
+  
+  .nota-container {
+    max-width: 100%;
+    max-height: 100vh;
+    border-radius: 0;
+  }
+  
+  .nota-header {
+    border-radius: 0;
+    padding: 14px;
+  }
+  
+  .nota-body {
+    padding: 12px;
+  }
+  
+  .nota-title-section h3 {
+    font-size: 15px;
+  }
+  
+  .nota-badge {
+    font-size: 10px;
+    padding: 3px 10px;
+  }
+  
+  .nota-info-grid {
+    padding: 12px;
+    border-radius: 10px;
+  }
+  
+  .info-item {
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  
+  .info-item i {
+    width: 24px;
+    font-size: 14px;
+  }
+  
+  .info-label {
+    font-size: 9px;
+  }
+  
+  .info-value {
+    font-size: 12px;
+  }
+  
+  .nota-table th {
+    font-size: 10px;
+    padding: 6px 3px;
+  }
+  
+  .nota-table td {
+    padding: 8px 3px;
+    font-size: 11px;
+  }
+  
+  .total-amount {
+    font-size: 14px;
+  }
+  
+  .nota-footer-actions {
+    gap: 8px;
+    margin: 16px 0 12px;
+  }
+  
+  .share-wa-btn, .print-nota-btn {
+    padding: 10px;
+    font-size: 12px;
+  }
+  
+  .nota-thanks p {
+    font-size: 10px;
+  }
+  
+  /* Admin Devices Panel */
+  #adminDevicesPanel {
+    width: 100%;
+    top: 0;
+    left: 0;
+    right: 0;
+    transform: none;
+    border-radius: 0 0 20px 20px;
+    padding: 12px;
+    min-height: auto;
+    max-height: 85vh;
+    overflow-y: auto;
+  }
+  
+  #adminDevicesContainer {
+    max-height: calc(85vh - 80px);
+  }
+  
+  #adminDevicesContainer th,
+  #adminDevicesContainer td {
+    padding: 6px 8px;
+    font-size: 0.72rem;
+  }
+  
+  /* Admin Devices Page */
+  .admin-devices-page {
+    padding: 10px;
+    border-radius: 10px;
+  }
+  
+  .admin-devices-page th,
+  .admin-devices-page td {
+    padding: 8px;
+    font-size: 0.75rem;
+  }
+  
+  .admin-device-action {
+    padding: 5px 8px;
+    font-size: 0.72rem;
+    margin-right: 4px;
+    margin-bottom: 4px;
+  }
+  
+  /* Data Cards */
+  .data-card h4 {
+    font-size: 0.85rem;
+  }
+  
+  .data-card small {
+    font-size: 0.7rem;
+  }
+  
+  /* Role Management */
+  .role-management-card .card-header {
+    gap: 10px;
+  }
+  
+  .btn-edit, .btn-delete {
+    padding: 5px 8px;
+    font-size: 10px;
+    margin-right: 4px;
+  }
+  
+  /* Empty/Error States */
+  .empty-state, .error-state {
+    padding: 40px 15px;
+  }
+  
+  .empty-state i, .error-state i {
+    font-size: 48px;
+  }
+  
+  /* Logo circle in nota */
+  .logo-circle {
+    width: 38px;
+    height: 38px;
+  }
+  
+  .logo-circle i {
+    font-size: 18px;
+  }
+  
+  .logo-text h2 {
+    font-size: 14px;
+  }
+  
+  .logo-text p {
+    font-size: 9px;
+  }
+  
+  /* Sync toast */
+  .sync-toast {
+    font-size: 0.75rem;
+    padding: 6px 12px;
+    bottom: 10px;
+  }
+}
+</style>
+</body>
+</html>

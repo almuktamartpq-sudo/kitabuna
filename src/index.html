@@ -1,0 +1,1109 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <title>Login - Kitabuna Almuktamar</title>
+  
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Import Font Arab Google -->
+<link href="https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;500;600;700&family=Scheherazade+New:wght@400;500;600;700&family=Lateef:wght@400;500;600;700&family=Amiri:wght@400;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#2563eb"
+  <link rel="apple-touch-icon" href="/icons/icon-192.png">
+  
+  <script>
+    // Auto-redirect ke app.html jika user sudah login
+    function checkAndRedirect() {
+      // Cek offline mode terlebih dahulu
+      if (localStorage.getItem("offline_mode") === "true" && localStorage.getItem("offline_user_id")) {
+        window.location.href = 'app.html';
+        return;
+      }
+      // Cek Supabase session
+      const supabaseUrl = localStorage.getItem("supabase_url");
+      const supabaseKey = localStorage.getItem("supabase_key");
+      if (supabaseUrl && supabaseKey) {
+        const session = localStorage.getItem("sb-" + supabaseUrl.split('//')[1].split('.')[0] + "-auth-token");
+        if (session) {
+          window.location.href = 'app.html';
+        }
+      }
+    }
+    checkAndRedirect();
+  </script>
+  
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body.login-page {
+      font-family: 'Poppins', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      position: relative;
+      overflow-x: hidden;
+      /* Background Islami warna hijau gelap yang kaya */
+      background: #0d2e22;
+    }
+    
+    /* ============================================ */
+    /* ORNAMEN ISLAMI STATIS YANG INDAH & MEYAKINKAN */
+    /* ============================================ */
+    
+    /* 1. Pola Arabesque besar di pojok kiri atas */
+    .ornament-corner-tl {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 280px;
+      height: 280px;
+      background: radial-gradient(ellipse at 0% 0%, rgba(212, 175, 55, 0.12) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+    
+    .ornament-corner-tl::before {
+      content: "﴿";
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      font-size: 65px;
+      color: rgba(212, 175, 55, 0.25);
+      font-family: 'Poppins', sans-serif;
+      font-weight: normal;
+    }
+    
+    .ornament-corner-tl::after {
+      content: "۞";
+      position: absolute;
+      top: 90px;
+      left: 70px;
+      font-size: 45px;
+      color: rgba(212, 175, 55, 0.18);
+    }
+    
+    /* 2. Ornamen pojok kanan bawah */
+    .ornament-corner-br {
+      position: absolute;
+      bottom: 0;
+      right: 0;
+      width: 320px;
+      height: 320px;
+      background: radial-gradient(ellipse at 100% 100%, rgba(212, 175, 55, 0.12) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+    
+    .ornament-corner-br::before {
+      content: "﴾";
+      position: absolute;
+      bottom: 25px;
+      right: 25px;
+      font-size: 75px;
+      color: rgba(212, 175, 55, 0.25);
+    }
+    
+    .ornament-corner-br::after {
+      content: "۞";
+      position: absolute;
+      bottom: 100px;
+      right: 85px;
+      font-size: 50px;
+      color: rgba(212, 175, 55, 0.18);
+    }
+    
+    /* 3. Ornamen pojok kanan atas - simetris */
+    .ornament-corner-tr {
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 250px;
+      height: 250px;
+      background: radial-gradient(ellipse at 100% 0%, rgba(212, 175, 55, 0.08) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    
+    .ornament-corner-tr::before {
+      content: "﴿";
+      position: absolute;
+      top: 15px;
+      right: 20px;
+      font-size: 45px;
+      color: rgba(212, 175, 55, 0.2);
+      transform: rotate(5deg);
+    }
+    
+    /* 4. Ornamen pojok kiri bawah */
+    .ornament-corner-bl {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 250px;
+      height: 250px;
+      background: radial-gradient(ellipse at 0% 100%, rgba(212, 175, 55, 0.08) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    
+    .ornament-corner-bl::before {
+      content: "﴾";
+      position: absolute;
+      bottom: 15px;
+      left: 20px;
+      font-size: 45px;
+      color: rgba(212, 175, 55, 0.2);
+    }
+    
+    /* 5. Border dekoratif utama - seperti bingkai mushaf */
+    .islamic-border {
+      position: absolute;
+      top: 25px;
+      left: 25px;
+      right: 25px;
+      bottom: 25px;
+      border: 1px solid rgba(212, 175, 55, 0.3);
+      border-radius: 60px 35px 60px 35px;
+      pointer-events: none;
+      z-index: 0;
+    }
+    
+    /* Border dalam kedua */
+    .islamic-border-inner {
+      position: absolute;
+      top: 40px;
+      left: 40px;
+      right: 40px;
+      bottom: 40px;
+      border: 1px dashed rgba(212, 175, 55, 0.2);
+      border-radius: 45px 25px 45px 25px;
+      pointer-events: none;
+    }
+    
+    /* 6. Pola geometris bintang 8 sudut (dengan grid) */
+    .geometric-pattern {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 100%;
+      height: 100%;
+      background-image: 
+        repeating-linear-gradient(0deg, rgba(212, 175, 55, 0.03) 0px, rgba(212, 175, 55, 0.03) 1px, transparent 1px, transparent 60px),
+        repeating-linear-gradient(90deg, rgba(212, 175, 55, 0.03) 0px, rgba(212, 175, 55, 0.03) 1px, transparent 1px, transparent 60px),
+        repeating-linear-gradient(45deg, rgba(212, 175, 55, 0.02) 0px, rgba(212, 175, 55, 0.02) 1px, transparent 1px, transparent 80px),
+        repeating-linear-gradient(135deg, rgba(212, 175, 55, 0.02) 0px, rgba(212, 175, 55, 0.02) 1px, transparent 1px, transparent 80px);
+      pointer-events: none;
+      z-index: 0;
+    }
+    
+    /* 7. Pola titik-titik halus (seperti bintang kecil) */
+    .star-pattern {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-image: radial-gradient(circle at 15% 30%, rgba(233, 196, 104, 0.12) 1.5px, transparent 1.5px);
+      background-size: 45px 45px;
+      pointer-events: none;
+      z-index: 0;
+    }
+    
+    /* 8. Deretan bintang/berlian di tengah sisi */
+    .diamond-strip-top {
+      position: absolute;
+      top: 60px;
+      left: 0;
+      right: 0;
+      text-align: center;
+      font-size: 18px;
+      letter-spacing: 20px;
+      color: rgba(212, 175, 55, 0.25);
+      pointer-events: none;
+      font-weight: normal;
+    }
+    
+    .diamond-strip-bottom {
+      position: absolute;
+      bottom: 60px;
+      left: 0;
+      right: 0;
+      text-align: center;
+      font-size: 18px;
+      letter-spacing: 20px;
+      color: rgba(212, 175, 55, 0.25);
+      pointer-events: none;
+    }
+    
+/* ============================================ */
+/* TEKS ARAB DI SAMPING KIRI & KANAN (LANDSCAPE) */
+/* ============================================ */
+
+/* Teks Arab di sisi KIRI container */
+.arabic-side-left {
+  position: fixed;
+  top: 50%;
+  left: 30px;
+  transform: translateY(-50%) rotate(-90deg);
+  font-family: 'Scheherazade New', 'Traditional Arabic', 'Times New Roman', serif;
+  font-size: 65px;
+  font-weight: 700;
+  background: linear-gradient(135deg, 
+    rgba(212, 175, 55, 0.35), 
+    rgba(218, 165, 32, 0.20), 
+    rgba(212, 175, 55, 0.35)
+  );
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  white-space: nowrap;
+  letter-spacing: 8px;
+  pointer-events: none;
+  z-index: 5;
+  opacity: 0.7;
+  text-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+/* Teks Arab di sisi KANAN container */
+.arabic-side-right {
+  position: fixed;
+  top: 50%;
+  right: 30px;
+  transform: translateY(-50%) rotate(90deg);
+  font-family: 'Scheherazade New', 'Traditional Arabic', 'Times New Roman', serif;
+  font-size: 65px;
+  font-weight: 700;
+  background: linear-gradient(135deg, 
+    rgba(212, 175, 55, 0.35), 
+    rgba(218, 165, 32, 0.20), 
+    rgba(212, 175, 55, 0.35)
+  );
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  white-space: nowrap;
+  letter-spacing: 8px;
+  pointer-events: none;
+  z-index: 5;
+  opacity: 0.7;
+  text-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+/* Teks Arab di ATAS container (opsional) */
+.arabic-side-top {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: 'Scheherazade New', 'Traditional Arabic', 'Times New Roman', serif;
+  font-size: 40px;
+  font-weight: 600;
+  background: linear-gradient(135deg, 
+    rgba(212, 175, 55, 0.30), 
+    rgba(218, 165, 32, 0.15), 
+    rgba(212, 175, 55, 0.30)
+  );
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  white-space: nowrap;
+  letter-spacing: 6px;
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* Teks Arab di BAWAH container (opsional) */
+.arabic-side-bottom {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: 'Scheherazade New', 'Traditional Arabic', 'Times New Roman', serif;
+  font-size: 40px;
+  font-weight: 600;
+  background: linear-gradient(135deg, 
+    rgba(212, 175, 55, 0.30), 
+    rgba(218, 165, 32, 0.15), 
+    rgba(212, 175, 55, 0.30)
+  );
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  white-space: nowrap;
+  letter-spacing: 6px;
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* ============================================ */
+/* RESPONSIVE: Sembunyikan di HP (potrait) */
+/* ============================================ */
+@media (max-width: 768px) {
+  .arabic-side-left,
+  .arabic-side-right {
+    display: none;
+  }
+  
+  .arabic-side-top,
+  .arabic-side-bottom {
+    font-size: 24px;
+    letter-spacing: 4px;
+  }
+}
+
+@media (max-width: 480px) {
+  .arabic-side-top,
+  .arabic-side-bottom {
+    display: none;
+  }
+}
+
+/* ============================================ */
+/* RESPONSIVE UNTUK LANDSCAPE HP */
+/* ============================================ */
+@media (max-width: 900px) and (orientation: landscape) {
+  .arabic-side-left,
+  .arabic-side-right {
+    font-size: 40px;
+    left: 10px;
+    right: 10px;
+  }
+  
+  .arabic-side-left {
+    left: 10px;
+  }
+  
+  .arabic-side-right {
+    right: 10px;
+  }
+}
+
+    
+    /* 10. Detail lingkaran konsentris di 4 sisi */
+    .circle-ornament {
+      position: absolute;
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      border: 1px solid rgba(212, 175, 55, 0.12);
+      pointer-events: none;
+    }
+    
+    .circle-ornament::before {
+      content: "۞";
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 28px;
+      color: rgba(212, 175, 55, 0.2);
+    }
+    
+    .circle-1 { top: 15%; left: 8%; }
+    .circle-2 { top: 15%; right: 8%; }
+    .circle-3 { bottom: 15%; left: 8%; }
+    .circle-4 { bottom: 15%; right: 8%; }
+    
+    /* ============================================ */
+    /* CARD LOGIN UTAMA */
+    /* ============================================ */
+    .login-container {
+      width: 100%;
+      max-width: 470px;
+      z-index: 10;
+      position: relative;
+    }
+    
+    .login-card {
+      background: rgba(255, 255, 255, 0.12);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-radius: 56px 40px 56px 40px;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.25);
+      overflow: hidden;
+      padding: 28px 26px 32px;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      position: relative;
+      transition: all 0.3s ease;
+    }
+    
+    
+    
+    /* Logo dan judul */
+    .logo-container {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    
+    .logo {
+      width: 80px;
+      height: 80px;
+      object-fit: contain;
+      background: #fef7e0;
+      border-radius: 50%;
+      padding: 12px;
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+      margin-bottom: 14px;
+      border: 2px solid #d4af37;
+    }
+    
+    .arabic-khat-title {
+      font-family: 'Scheherazade New', 'Traditional Arabic', 'Times New Roman', serif;
+      font-weight: 800;
+      font-size: 2.4rem;
+      letter-spacing: 2px;
+      background: linear-gradient(135deg, #c68932, #eac267, #be872a);
+      background-clip: text;
+      -webkit-background-clip: text;
+      color: transparent;
+      margin-bottom: 6px;
+      line-height: 1.2;
+      text-align: center;
+    }
+    
+    .arabic-decoration {
+      text-align: center;
+      margin: 8px auto 12px;
+      width: 80px;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, #d4af37, #b87c2e, transparent);
+    }
+    
+    .app-title {
+      font-size: 1.55rem;
+      font-weight: 800;
+      color: #195a38;
+      letter-spacing: -0.5px;
+      text-align: center;
+      text-shadow:
+        0 0 4px rgba(255, 214, 92, 0.55),
+        0 0 8px rgba(255, 214, 92, 0.45),
+        0 0 18px rgba(255, 214, 92, 0.25);
+    }
+    
+    .app-subtitle {
+      font-size: 0.9rem;
+      color: #fffaf1;
+      margin-top: 8px;
+      font-weight: 600;
+      background: rgba(255, 255, 255, 0.16);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      display: inline-block;
+      padding: 6px 16px;
+      border-radius: 40px;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      box-shadow: 0 0 18px rgba(255, 238, 164, 0.18);
+    }
+    
+    .ornament-line {
+      text-align: center;
+      margin-top: 14px;
+      font-size: 1rem;
+      color: #c5aa6f;
+      letter-spacing: 6px;
+    }
+    
+    /* Input group */
+    .input-group {
+      position: relative;
+      margin-bottom: 18px;
+      display: flex;
+      align-items: center;
+      background: #f9f6ef;
+      border-radius: 60px;
+      border: 1px solid #e3d7c2;
+      transition: all 0.2s;
+    }
+    
+    .input-group:focus-within {
+      border-color: #cfb05c;
+      box-shadow: 0 0 0 3px rgba(207, 176, 92, 0.2);
+      background: #ffffff;
+    }
+    
+    .input-group i:first-child {
+      padding-left: 22px;
+      font-size: 1.2rem;
+      color: #be872a;
+      width: 52px;
+    }
+    
+    .input-group input {
+      flex: 1;
+      border: none;
+      background: transparent;
+      padding: 14px 12px 14px 6px;
+      font-size: 0.96rem;
+      font-family: 'Poppins', sans-serif;
+      outline: none;
+      color: #2a462e;
+      font-weight: 500;
+    }
+    
+    .input-group input::placeholder {
+      color: #b5aa87;
+    }
+    
+    .toggle-password {
+      cursor: pointer;
+      padding-right: 22px;
+      color: #be872a;
+      font-size: 1.1rem;
+    }
+    
+    .toggle-password:hover {
+      color: #7c5e28;
+    }
+    
+    /* Tombol login */
+    .btn-login {
+      background: linear-gradient(105deg, #1f7045, #0f5332);
+      border: none;
+      width: 100%;
+      padding: 13px;
+      border-radius: 60px;
+      font-size: 0.98rem;
+      font-weight: 700;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-top: 16px;
+      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.18);
+    }
+    
+    .btn-login:hover {
+      background: linear-gradient(105deg, #145e39, #0a4324);
+      transform: translateY(-2px);
+      box-shadow: 0 12px 24px rgba(0, 0, 0, 0.25);
+    }
+    
+    .btn-login:active {
+      transform: translateY(1px);
+    }
+
+    /* ============================================ */
+    /* TOMBOL GOOGLE - SESUAI DENGAN GAMBAR */
+    /* ============================================ */
+    .btn-google {
+      background: #ffffff;
+      color: #3c4043;
+      border: 1px solid #dadce0;
+      width: 100%;
+      padding: 12px 18px;
+      border-radius: 60px;
+      font-size: 1rem;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      margin-top: 18px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+      font-family: 'Poppins', sans-serif;
+    }
+
+    .btn-google:hover {
+      background: #f8f9fa;
+      border-color: #d2d3d7;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+      transform: translateY(-1px);
+    }
+
+    .btn-google:active {
+      transform: translateY(1px);
+    }
+
+    .btn-google:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .google-icon {
+      width: 24px;
+      height: 24px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .google-icon svg {
+      width: 22px;
+      height: 22px;
+      display: block;
+    }
+
+    .google-text {
+      font-size: 0.95rem;
+      font-weight: 500;
+      letter-spacing: -0.2px;
+    }
+
+    /* Divider "Atau" yang elegan */
+    .divider {
+      display: flex;
+      align-items: center;
+      text-align: center;
+      margin: 16px 0 8px;
+      color: #d1bc8a;
+      font-size: 0.8rem;
+      font-weight: 500;
+    }
+
+    .divider::before,
+    .divider::after {
+      content: '';
+      flex: 1;
+      border-bottom: 1px solid rgba(212, 175, 55, 0.35);
+    }
+
+    .divider::before {
+      margin-right: 12px;
+    }
+
+    .divider::after {
+      margin-left: 12px;
+    }
+    
+    /* Footer */
+    .login-footer {
+      text-align: center;
+      margin-top: 28px;
+      font-size: 0.7rem;
+      color: #897e5b;
+      border-top: 1px solid #efe3cf;
+      padding-top: 16px;
+    }
+    
+    /* Toast */
+    .login-toast {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: #2b6e3c;
+      color: white;
+      padding: 12px 28px;
+      border-radius: 60px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      z-index: 10000;
+      opacity: 0;
+      transition: all 0.3s;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: rgba(31, 110, 67, 0.96);
+      border-left: 5px solid #f5d37c;
+    }
+    
+    .login-toast.error {
+      background: rgba(189, 54, 47, 0.96);
+    }
+    
+    .login-toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+    
+    .fa-spin {
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    
+    @media (max-width: 550px) {
+      .login-card { padding: 30px 20px; border-radius: 36px 28px 36px 28px; }
+      .arabic-khat-title { font-size: 2.3rem; }
+      .app-title { font-size: 1.5rem; }
+      .logo { width: 78px; height: 78px; }
+      .islamic-border { top: 12px; left: 12px; right: 12px; bottom: 12px; border-radius: 40px 25px 40px 25px; }
+      .islamic-border-inner { top: 22px; left: 22px; right: 22px; bottom: 22px; border-radius: 30px 18px 30px 18px; }
+      .background-calligraphy { font-size: 100px; letter-spacing: 8px; white-space: nowrap; }
+      .ornament-corner-tl, .ornament-corner-tr, .ornament-corner-bl, .ornament-corner-br { width: 180px; height: 180px; }
+      .diamond-strip-top, .diamond-strip-bottom { font-size: 14px; letter-spacing: 14px; }
+      .circle-ornament { width: 80px; height: 80px; }
+      .circle-ornament::before { font-size: 20px; }
+      .app-subtitle { font-size: 0.8rem; padding: 5px 12px; }
+    }
+    
+    @media (max-width: 380px) {
+      .login-card { padding: 24px 16px; border-radius: 28px 20px 28px 20px; }
+      .arabic-khat-title { font-size: 1.9rem; }
+      .app-title { font-size: 1.3rem; }
+      .logo { width: 68px; height: 68px; padding: 10px; }
+      .input-group input { padding: 12px 10px 12px 4px; font-size: 0.9rem; }
+      .input-group i:first-child { padding-left: 16px; font-size: 1rem; width: 40px; }
+      .toggle-password { padding-right: 16px; font-size: 1rem; }
+      .btn-login { padding: 12px; font-size: 0.9rem; gap: 10px; }
+      .btn-google { padding: 10px 14px; font-size: 0.9rem; }
+      .google-text { font-size: 0.85rem; }
+      .islamic-border { top: 8px; left: 8px; right: 8px; bottom: 8px; border-radius: 30px 20px 30px 20px; }
+      .islamic-border-inner { top: 16px; left: 16px; right: 16px; bottom: 16px; border-radius: 22px 14px 22px 14px; }
+      .ornament-corner-tl, .ornament-corner-tr, .ornament-corner-bl, .ornament-corner-br { width: 140px; height: 140px; }
+      .ornament-corner-tl::before, .ornament-corner-br::before { font-size: 50px; }
+      .ornament-corner-tl::after, .ornament-corner-br::after { font-size: 35px; }
+      .diamond-strip-top { top: 40px; font-size: 12px; letter-spacing: 10px; }
+      .diamond-strip-bottom { bottom: 40px; font-size: 12px; letter-spacing: 10px; }
+      .circle-ornament { width: 60px; height: 60px; }
+      .circle-ornament::before { font-size: 16px; }
+      .geometric-pattern { display: none; }
+      .star-pattern { display: none; }
+    }
+  </style>
+</head>
+<body class="login-page">
+  
+  <!-- ============================================ -->
+  <!-- LAPISAN ORNAMEN ISLAMI YANG INDAH (STATIS)   -->
+  <!-- ============================================ -->
+  
+  <!-- Bingkai utama -->
+  <div class="islamic-border"></div>
+  <div class="islamic-border-inner"></div>
+  
+  <!-- Pola geometris -->
+  <div class="geometric-pattern"></div>
+  <div class="star-pattern"></div>
+  
+  <!-- Kaligrafi background -->
+    <div class="arabic-side-left">كتابنا المؤتمر</div>
+  <div class="arabic-side-right">كتابنا المؤتمر</div>
+  <div class="arabic-side-top">كتابنا المؤتمر</div>
+  <div class="arabic-side-bottom">كتابنا المؤتمر</div>
+  
+  <!-- Ornamen sudut -->
+  <div class="ornament-corner-tl"></div>
+  <div class="ornament-corner-tr"></div>
+  <div class="ornament-corner-bl"></div>
+  <div class="ornament-corner-br"></div>
+  
+  <!-- Deretan bintang -->
+  <div class="diamond-strip-top">۞ ◈ ۞ ◈ ۞ ◈ ۞</div>
+  <div class="diamond-strip-bottom">۞ ◈ ۞ ◈ ۞ ◈ ۞</div>
+  
+  <!-- Lingkaran hiasan -->
+  <div class="circle-ornament circle-1"></div>
+  <div class="circle-ornament circle-2"></div>
+  <div class="circle-ornament circle-3"></div>
+  <div class="circle-ornament circle-4"></div>
+  
+  <!-- ============================================ -->
+  <!-- CARD LOGIN                                    -->
+  <!-- ============================================ -->
+  
+  <div class="login-container">
+    <div class="login-card">
+      <div class="logo-container">
+        <img src="https://i.imgur.com/2mDfHEi.png" alt="Logo" class="logo" onerror="this.src='https://placehold.co/150x150?text=۞&bg=fef7e0&textColor=d4af37'">
+        
+        <div class="arabic-khat-title">كِتَابُنَا</div>
+        <div class="arabic-decoration"></div>
+        
+        <h1 class="app-title">Kitabuna Almuktamar</h1>
+        
+        <div class="ornament-line">۞</div>
+      </div>
+      
+      <form id="loginForm" onsubmit="event.preventDefault(); handleLogin()">
+        <div class="input-group">
+          <i class="fas fa-envelope"></i>
+          <input type="email" id="email" placeholder="Alamat Email">
+        </div>
+        <div class="input-group">
+          <i class="fas fa-lock"></i>
+          <input type="password" id="password" placeholder="Kata Sandi">
+          <i class="fas fa-eye toggle-password" onclick="togglePassword(event)"></i>
+        </div>
+        <button type="submit" class="btn-login" id="btnLogin">
+          <span>Masuk ke Dashboard</span>
+          <i class="fas fa-sign-in-alt"></i>
+        </button>
+        <div class="divider">Atau</div>
+        <button type="button" class="btn-google" id="btnGoogle" onclick="handleGoogleLogin()">
+          <span class="google-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="24px" height="24px">
+              <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z" />
+              <path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z" />
+              <path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z" />
+              <path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z" />
+            </svg>
+          </span>
+          <span class="google-text">Masuk dengan Google</span>
+        </button>
+      </form>
+      
+      <div class="login-footer">
+        <p id="envInfo"></p>
+        <p id="offlineInfo" style="font-size:0.75rem; color:#c6a231; margin-top:5px;"></p>
+        <p id="copyrightYear"></p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ============================================
+    // SUPABASE CONFIG
+    // ============================================
+    const SUPABASE_URL = "https://jtqraahesthkgthbcktp.supabase.co";
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp0cXJhYWhlc3Roa2d0aGJja3RwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzQ5NzIsImV4cCI6MjA4Nzg1MDk3Mn0.HSburGL2Moy06hMqClJ1TDO5ix2-yLCd3aAC5QYmXYc";
+    window.sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    
+    // Offline credentials
+    const OFFLINE_USERS = [
+      { id: "offline_admin_001", email: "adminku@gmail.com", password: "admin", nama: "Administrator", role: "admin" },
+      { id: "offline_kasir_001",  email: "kasirku@gmail.com", password: "kasir", nama: "Kasir Utama", role: "kasir" }
+    ];
+    
+    window.isTauri = !!(window.__TAURI__);
+    var envInfo = document.getElementById('envInfo');
+    var offlineInfo = document.getElementById('offlineInfo');
+
+    async function saveUserSession(user) {
+      if (!user) return;
+      const userName = user.user_metadata?.full_name || user.email?.split('@')[0] || user.email || 'Pengguna';
+      localStorage.setItem('offline_user_id', user.id);
+      localStorage.setItem('offline_user_email', user.email || '');
+      localStorage.setItem('offline_user_name', userName);
+      localStorage.setItem('offline_user_role', 'kasir');
+      localStorage.setItem('offline_mode', 'false');
+    }
+
+    async function handleGoogleLogin() {
+      if (!navigator.onLine) {
+        showToast('Koneksi internet diperlukan untuk Google Login', 'error');
+        return;
+      }
+
+      var btn = document.getElementById('btnGoogle');
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menghubungkan...';
+
+      try {
+        const currentUrl = window.location.origin && window.location.origin !== 'null'
+          ? window.location.origin + window.location.pathname
+          : window.location.href.split('?')[0];
+
+        const { data, error } = await sb.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            redirectTo: currentUrl
+          }
+        });
+
+        if (error) {
+          throw error;
+        }
+        if (data?.url) {
+          window.location.href = data.url;
+        }
+      } catch (err) {
+        console.warn('Google login error', err);
+        showToast(err.message || 'Google login gagal', 'error');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fab fa-google"></i> Masuk dengan Google';
+      }
+    }
+
+    async function processOAuthRedirect() {
+      if (!navigator.onLine) return; // Skip jika offline
+      try {
+        const { data, error } = await sb.auth.getSessionFromUrl({ storeSession: true });
+        if (error) {
+          console.warn('OAuth redirect error', error);
+          return;
+        }
+        if (data?.session?.user) {
+          await saveUserSession(data.session.user);
+          window.location.href = 'app.html';
+        }
+      } catch (err) {
+        console.warn('OAuth redirect failed', err);
+      }
+    }
+
+    async function restoreSession() {
+      // Cek localStorage dulu (cepat, tanpa network)
+      var existingUserId = localStorage.getItem('offline_user_id');
+      var existingRole = localStorage.getItem('offline_user_role');
+      if (existingUserId && existingRole) {
+        window.location.href = 'app.html';
+        return;
+      }
+      // Hanya cek Supabase session jika online dan belum ada di localStorage
+      if (!navigator.onLine) return;
+      try {
+        const { data } = await sb.auth.getSession();
+        const session = data?.session;
+        if (session?.user) {
+          await saveUserSession(session.user);
+          window.location.href = 'app.html';
+        }
+      } catch (err) {
+        console.warn('Session restore failed', err);
+      }
+    }
+
+    window.addEventListener('load', async function() {
+      await processOAuthRedirect();
+      await restoreSession();
+    });
+
+    var offlineInfo = document.getElementById('offlineInfo');
+    var offlineInfo = document.getElementById('offlineInfo');
+    
+   
+    
+    function updateNetworkStatus() {
+      if (!navigator.onLine) {
+        if (offlineInfo) offlineInfo.innerHTML = '<i class="fas fa-wifi-slash"></i> Mode Offline - Login lokal tersedia';
+      } else {
+        if (offlineInfo) offlineInfo.innerHTML = '<i class="fas fa-wifi"></i> Mode Online - Koneksi Supabase aktif';
+      }
+    }
+    updateNetworkStatus();
+    window.addEventListener('online', updateNetworkStatus);
+    window.addEventListener('offline', updateNetworkStatus);
+    
+    function togglePassword(event) {
+      var pwd = document.getElementById('password');
+      var icon = event.currentTarget;
+      if (pwd.type === 'password') {
+        pwd.type = 'text';
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-eye-slash');
+      } else {
+        pwd.type = 'password';
+        icon.classList.remove('fa-eye-slash');
+        icon.classList.add('fa-eye');
+      }
+    }
+    
+    function showToast(message, type) {
+      var toast = document.createElement('div');
+      toast.className = 'login-toast ' + (type === 'error' ? 'error' : '');
+      toast.innerHTML = '<i class="fas ' + (type === 'error' ? 'fa-exclamation-triangle' : 'fa-check-circle') + '"></i> ' + message;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.classList.add('show'), 10);
+      setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => { if(toast.parentNode) toast.remove(); }, 300);
+      }, 2800);
+    }
+    
+    async function offlineLogin(email, password) {
+      const user = OFFLINE_USERS.find(u => u.email === email && u.password === password);
+      if (!user) return { success: false, error: 'Email atau password salah! (Mode Offline)' };
+      localStorage.setItem("offline_user_id", user.id);
+      localStorage.setItem("offline_user_email", user.email);
+      localStorage.setItem("offline_user_name", user.nama);
+      localStorage.setItem("offline_user_role", user.role);
+      localStorage.setItem("offline_mode", "true");
+      return { success: true, user: { id: user.id, email: user.email, nama: user.nama, role: user.role } };
+    }
+    
+    async function hybridLogin(email, password) {
+      // Jika online, coba login ke Supabase dulu
+      if (navigator.onLine) {
+        try {
+          const { data, error } = await sb.auth.signInWithPassword({ email, password });
+          if (!error && data.user) {
+            const { data: profile } = await sb
+              .from('profiles')
+              .select('nama, role')
+              .eq('id', data.user.id)
+              .maybeSingle();
+            const userRole = profile?.role || 'kasir';
+            const userName = profile?.nama || data.user.email.split('@')[0];
+            localStorage.setItem("offline_user_id", data.user.id);
+            localStorage.setItem("offline_user_email", data.user.email);
+            localStorage.setItem("offline_user_name", userName);
+            localStorage.setItem("offline_user_role", userRole);
+            localStorage.setItem("offline_mode", "false");
+            return { success: true, user: { id: data.user.id, email: data.user.email, nama: userName, role: userRole } };
+          }
+        } catch (err) {
+          console.warn("Online login failed:", err.message);
+        }
+      }
+      // Fallback ke offline login
+      return await offlineLogin(email, password);
+    }
+    
+    async function handleLogin() {
+      var email = document.getElementById("email").value.trim();
+      var password = document.getElementById("password").value;
+      var btnLogin = document.getElementById("btnLogin");
+      
+      if (!email || !password) {
+        showToast('Email dan password harus diisi!', 'error');
+        return;
+      }
+      
+      btnLogin.disabled = true;
+      btnLogin.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memproses...';
+      
+      try {
+        const result = await hybridLogin(email, password);
+        if (result.success) {
+          const roleText = result.user.role === 'admin' ? 'Administrator' : 'Kasir';
+          showToast(`Login berhasil! Selamat datang, ${roleText}`, 'success');
+          setTimeout(() => {
+            window.location.href = "app.html";
+          }, 800);
+        } else {
+          showToast(result.error || 'Login gagal, coba lagi', 'error');
+          btnLogin.disabled = false;
+          btnLogin.innerHTML = '<span>Masuk ke Dashboard</span><i class="fas fa-sign-in-alt"></i>';
+        }
+      } catch (error) {
+        showToast('Terjadi kesalahan, coba lagi', 'error');
+        btnLogin.disabled = false;
+        btnLogin.innerHTML = '<span>Masuk ke Dashboard</span><i class="fas fa-sign-in-alt"></i>';
+      }
+    }
+    
+    document.getElementById('copyrightYear').innerHTML = `&copy; ${new Date().getFullYear()} Kitabuna Almuktamar</i>`;
+    
+    document.addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        handleLogin();
+      }
+    });
+	
+	if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("/sw.js");
+}
+
+navigator.serviceWorker.addEventListener("controllerchange", () => {
+  location.reload();
+});
+  </script>
+</body>
+</html>

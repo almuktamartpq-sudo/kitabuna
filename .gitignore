@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Tauri
+src-tauri/target/
+src-tauri/gen/
+src-tauri/WixTools/
+src-tauri/Frameworks/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.log
+
+# Qoder
+.qoder/cache/
+.qoder/projects/
+
+# Package lock (keep for consistency, but ignore if needed)
+# package-lock.json
+
+# Temporary files
+*.tmp
+*.temp
+*.bak

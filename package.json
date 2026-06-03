@@ -1,0 +1,26 @@
+{
+  "name": "kitab-madin-desktop",
+  "version": "1.0.0",
+  "description": "Aplikasi POS Kitab Madin Almuktamar - Offline First",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "tauri": "tauri",
+    "desktop": "tauri dev",
+    "desktop:build": "tauri build"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0",
+    "@tauri-apps/plugin-updater": "^2.10.1",
+    "chart.js": "^4.4.0",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.8",
+    "sweetalert2": "^11.10.0"
+  },
+  "devDependencies": {
+    "@tauri-apps/api": "^2.0.0",
+    "@tauri-apps/cli": "^2.0.0",
+    "vite": "^8.0.14"
+  }
+}
