@@ -1,6 +1,6 @@
 {
-  "buildCommand": null,
+  "buildCommand": "npm run vercel-build",
   "outputDirectory": "dist",
   "framework": null,
-  "installCommand": null
+  "installCommand": "npm install --omit=dev"
 }

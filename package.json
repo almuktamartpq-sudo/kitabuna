@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "vercel-build": "echo 'No build needed'",
     "tauri": "tauri",
     "desktop": "tauri dev",
     "desktop:build": "tauri build"
