@@ -480,6 +480,83 @@ body {
   font-size: 0.85rem;
 }
 
+/* Falak Header - Tanggal Hijriah + WIS + Lokasi */
+.falak-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.85rem;
+  color: var(--gray);
+  flex-wrap: nowrap;
+  overflow: hidden;
+  max-width: 100%;
+}
+
+.falak-sep {
+  color: var(--secondary);
+  font-weight: bold;
+  flex-shrink: 0;
+}
+
+.wis-display {
+  color: #00aa66;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.location-marquee {
+  overflow: hidden;
+  white-space: nowrap;
+  max-width: 250px;
+  position: relative;
+  flex-shrink: 1;
+  min-width: 0;
+}
+
+.marquee-inner {
+  display: inline-block;
+  animation: marquee 12s linear infinite;
+  padding-left: 100%;
+}
+
+.location-marquee:hover .marquee-inner {
+  animation-play-state: paused;
+}
+
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-100%); }
+}
+
+/* Responsive falak header */
+@media (max-width: 768px) {
+  .content-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 12px 15px;
+  }
+  .falak-header {
+    font-size: 0.78rem;
+    gap: 6px;
+    width: 100%;
+  }
+  .location-marquee {
+    max-width: 180px;
+  }
+}
+
+@media (max-width: 480px) {
+  .falak-header {
+    font-size: 0.72rem;
+    flex-wrap: wrap;
+  }
+  .location-marquee {
+    max-width: 150px;
+  }
+}
+
 .content-body {
   min-height: calc(100vh - 140px);
 }

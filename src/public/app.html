@@ -64,8 +64,13 @@
     <div class="content-header">
       <h3 id="pageTitle">Dashboard</h3>
       <div class="header-actions">
-        <span class="date-display" id="currentDate"></span>
-        <span class="wis-display" id="wisClock" style="margin-left: 15px; font-weight: bold; color: #00aa66;"></span>
+        <div class="falak-header">
+          <span class="date-display" id="currentDate"></span>
+          <span class="falak-sep">|</span>
+          <span class="wis-display" id="wisClock"></span>
+          <span class="falak-sep">|</span>
+          <span class="location-marquee" id="locationText"><span class="marquee-inner"><i class="fas fa-map-marker-alt"></i> Pondok Pesantren Lirboyo, Kediri, Jawa Timur</span></span>
+        </div>
       </div>
     </div>
     <div class="content-body" id="content">
@@ -170,11 +175,12 @@ if (document.readyState === 'loading') {
   // TANGGAL HIJRIAH & JAM ISTIWAK (WIS)
   // ============================================
   var userCoords = { lon: 111.9972, tzOffset: 7 };
+  var lokasiName = 'Pondok Pesantren Lirboyo, Kediri, Jawa Timur';
 
   function dapatkanTanggalHijriah(date) {
     var opsi = { day: 'numeric', month: 'long', year: 'numeric' };
     var formatter = new Intl.DateTimeFormat('id-ID-u-ca-islamic-umalqura', opsi);
-    return formatter.format(date) + ' H';
+    return formatter.format(date);
   }
 
   function hitungWaktuIstiwak(date, lon, timezoneOffset) {
@@ -194,31 +200,42 @@ if (document.readyState === 'loading') {
     var jamIstiwak = Math.floor(totalMenitIstiwak / 60);
     var sisaMenit = totalMenitIstiwak % 60;
     var menitIstiwak = Math.floor(sisaMenit);
-    var detikIstiwak = Math.floor((sisaMenit - menitIstiwak) * 60);
-    return String(jamIstiwak).padStart(2, '0') + ':' + String(menitIstiwak).padStart(2, '0') + ':' + String(detikIstiwak).padStart(2, '0') + ' WIS';
+    return String(jamIstiwak).padStart(2, '0') + ':' + String(menitIstiwak).padStart(2, '0') + ' WIS';
   }
 
   function initFalakHeader() {
     var inputDateEl = document.getElementById('currentDate');
     var wisClockEl = document.getElementById('wisClock');
+    var locationEl = document.getElementById('locationText');
 
+    // Deteksi GPS
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(function(position) {
         userCoords.lon = position.coords.longitude;
         userCoords.tzOffset = -new Date().getTimezoneOffset() / 60;
+        // Coba reverse geocode untuk nama lokasi
+        fetch('https://nominatim.openstreetmap.org/reverse?format=json&lat=' + position.coords.latitude + '&lon=' + position.coords.longitude)
+          .then(function(r) { return r.json(); })
+          .then(function(data) {
+            if (data && data.address) {
+              var addr = data.address;
+              var parts = [addr.village || addr.hamlet || addr.suburb || '', addr.county || addr.city || addr.town || '', addr.state || ''].filter(Boolean);
+              if (parts.length > 0) {
+                lokasiName = parts.join(', ');
+                if (locationEl) locationEl.innerHTML = '<span class="marquee-inner"><i class="fas fa-map-marker-alt"></i> ' + lokasiName + '</span>';
+              }
+            }
+          }).catch(function() {});
       }, function(error) {
-        console.log('GPS tidak aktif atau izin ditolak, menggunakan lokasi default.');
+        console.log('GPS tidak aktif, menggunakan lokasi default.');
       });
     }
 
+    // Update setiap detik
     setInterval(function() {
       var sekarang = new Date();
-      if (inputDateEl) {
-        inputDateEl.innerText = dapatkanTanggalHijriah(sekarang);
-      }
-      if (wisClockEl) {
-        wisClockEl.innerText = hitungWaktuIstiwak(sekarang, userCoords.lon, userCoords.tzOffset);
-      }
+      if (inputDateEl) inputDateEl.innerText = dapatkanTanggalHijriah(sekarang);
+      if (wisClockEl) wisClockEl.innerText = hitungWaktuIstiwak(sekarang, userCoords.lon, userCoords.tzOffset);
     }, 1000);
   }
 
