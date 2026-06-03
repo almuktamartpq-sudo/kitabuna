@@ -3,7 +3,6 @@ const CACHE_NAME = "kitabmadin-v3";
 // Assets yang di-cache
 const ASSETS = [
   "/",
-  "/index.html",
   "/app.html",
   "/css/style.css",
   "/js/supabase.js",
