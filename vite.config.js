@@ -2,13 +2,14 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
   root: 'src',
+  publicDir: 'public', // Copy public folder to dist
   build: {
     outDir: '../dist',
     emptyOutDir: true,
     rollupOptions: {
       input: {
-        main: 'src/index.html',
-        app: 'src/app.html'
+        main: 'index.html',
+        app: 'app.html'
       }
     }
   },
