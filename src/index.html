@@ -15,8 +15,10 @@
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- PWA Manifest -->
   <link rel="manifest" href="/manifest.json">
-  <meta name="theme-color" content="#2563eb"
+  <meta name="theme-color" content="#2563eb">
   <link rel="apple-touch-icon" href="/icons/icon-192.png">
   
   <script>
@@ -38,6 +40,40 @@
       }
     }
     checkAndRedirect();
+  </script>
+  
+  <!-- Service Worker Registration -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', async () => {
+        try {
+          const reg = await navigator.serviceWorker.register('/sw.js');
+          console.log('✅ SW registered:', reg.scope);
+          
+          // Auto-update check setiap 30 menit
+          setInterval(async () => {
+            try {
+              await reg.update();
+              console.log('🔄 SW update check done');
+            } catch(e) {}
+          }, 30 * 60 * 1000);
+          
+          // Listen untuk new version
+          reg.addEventListener('updatefound', () => {
+            const newWorker = reg.installing;
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'activated') {
+                if (confirm('Versi baru tersedia! Muat ulang untuk pembaruan?')) {
+                  window.location.reload();
+                }
+              }
+            });
+          });
+        } catch(err) {
+          console.log('SW registration failed:', err);
+        }
+      });
+    }
   </script>
   
   <style>
@@ -1096,14 +1132,6 @@
         handleLogin();
       }
     });
-	
-	if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/sw.js");
-}
-
-navigator.serviceWorker.addEventListener("controllerchange", () => {
-  location.reload();
-});
   </script>
 </body>
 </html>

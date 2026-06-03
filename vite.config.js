@@ -7,8 +7,8 @@ export default defineConfig({
     emptyOutDir: true,
     rollupOptions: {
       input: {
-        main: 'index.html',
-        app: 'app.html'
+        main: 'src/index.html',
+        app: 'src/app.html'
       }
     }
   },
@@ -16,8 +16,11 @@ export default defineConfig({
     port: 1420,
     strictPort: true,
     host: '0.0.0.0',
-    allowedHosts: true, // Disable host checking di Vite 8
-    cors: true // Allow all CORS
+    allowedHosts: true,
+    cors: true,
+    hmr: {
+      overlay: false // Disable error overlay
+    }
   },
   preview: {
     port: 4173,

@@ -9,6 +9,11 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#2563eb">
+  <link rel="apple-touch-icon" href="/icons/icon-192.png">
+  
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
@@ -17,9 +22,6 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-  <link rel="manifest" href="/manifest.json">
-  <meta name="theme-color" content="#2563eb">
-  <link rel="apple-touch-icon" href="/icons/icon-192.png">
 </head>
 <body>
 
@@ -77,7 +79,50 @@
 <!-- ============================================ -->
 <!-- SCRIPTS                                      -->
 <!-- ============================================ -->
-<script type="module" src="/js/main.js"></script>
+<script src="js/supabase.js"></script>
+<script src="js/device.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/db-local.js"></script>
+<script src="js/offline-core.js"></script>
+<script src="js/master-kelas.js"></script>
+<script src="js/sync-manager.js"></script>
+<script src="js/app-offline.js"></script>
+<script src="js/admin-devices.js"></script>
+<script src="js/sync-notification.js"></script>
+
+<!-- Service Worker Registration -->
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', async () => {
+      try {
+        const reg = await navigator.serviceWorker.register('/sw.js');
+        console.log('✅ SW registered:', reg.scope);
+        
+        // Auto-update check setiap 30 menit
+        setInterval(async () => {
+          try {
+            await reg.update();
+            console.log('🔄 SW update check done');
+          } catch(e) {}
+        }, 30 * 60 * 1000);
+        
+        // Listen untuk new version
+        reg.addEventListener('updatefound', () => {
+          const newWorker = reg.installing;
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'activated') {
+              if (confirm('Versi baru tersedia! Muat ulang untuk pembaruan?')) {
+                window.location.reload();
+              }
+            }
+          });
+        });
+      } catch(err) {
+        console.log('SW registration failed:', err);
+      }
+    });
+  }
+</script>
 
 <script>
 
@@ -1521,26 +1566,7 @@ async function deleteUser(userId, userName) {
     }
   })();
 })();
-
-
-
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/service-worker.js')
-    .then(reg => {
-      reg.update();
-
-      setInterval(() => {
-        reg.update();
-      }, 60000);
-    });
-
-  navigator.serviceWorker.addEventListener('controllerchange', () => {
-    window.location.reload();
-  });
-}
 </script>
-
-
 
 <style>
   .window-controls button { background: transparent; border: none; cursor: pointer; padding: 5px; border-radius: 5px; }

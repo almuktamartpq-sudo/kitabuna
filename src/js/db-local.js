@@ -54,30 +54,42 @@ class LocalDB {
           console.log('✅ Created store: produk');
         }
         
-        // 2. Store transaksi (DENGAN NAMA_PEMBELI)
-        const transaksiStore = db.createObjectStore('transaksi', { keyPath: 'id' });
-        transaksiStore.createIndex('created_at', 'created_at', { unique: false });
-        transaksiStore.createIndex('user_id', 'user_id', { unique: false });
-        transaksiStore.createIndex('nama_pembeli', 'nama_pembeli', { unique: false }); // INDEX BARU
-        console.log('✅ Created store: transaksi with nama_pembeli');
+        // 2. Store transaksi
+        if (!db.objectStoreNames.contains('transaksi')) {
+          const transaksiStore = db.createObjectStore('transaksi', { keyPath: 'id' });
+          transaksiStore.createIndex('created_at', 'created_at', { unique: false });
+          transaksiStore.createIndex('user_id', 'user_id', { unique: false });
+          transaksiStore.createIndex('nama_pembeli', 'nama_pembeli', { unique: false });
+          console.log('✅ Created store: transaksi');
+        } else {
+          const ts = e.target.transaction.objectStore('transaksi');
+          try { if (!ts.indexNames.contains('nama_pembeli')) ts.createIndex('nama_pembeli', 'nama_pembeli', { unique: false }); } catch (err) {}
+          console.log('✅ Ensured indexes for store: transaksi');
+        }
         
         // 3. Store detail_transaksi
-        const detailStore = db.createObjectStore('detail_transaksi', { keyPath: 'id', autoIncrement: true });
-        detailStore.createIndex('transaksi_id', 'transaksi_id', { unique: false });
-        detailStore.createIndex('produk_id', 'produk_id', { unique: false });
-        console.log('✅ Created store: detail_transaksi');
+        if (!db.objectStoreNames.contains('detail_transaksi')) {
+          const detailStore = db.createObjectStore('detail_transaksi', { keyPath: 'id', autoIncrement: true });
+          detailStore.createIndex('transaksi_id', 'transaksi_id', { unique: false });
+          detailStore.createIndex('produk_id', 'produk_id', { unique: false });
+          console.log('✅ Created store: detail_transaksi');
+        }
         
         // 4. Store profiles
-        const profileStore = db.createObjectStore('profiles', { keyPath: 'id' });
-        profileStore.createIndex('role', 'role', { unique: false });
-        console.log('✅ Created store: profiles');
+        if (!db.objectStoreNames.contains('profiles')) {
+          const profileStore = db.createObjectStore('profiles', { keyPath: 'id' });
+          profileStore.createIndex('role', 'role', { unique: false });
+          console.log('✅ Created store: profiles');
+        }
         
         // 5. Store syncQueue
-        const syncQueueStore = db.createObjectStore('syncQueue', { keyPath: 'id', autoIncrement: true });
-        syncQueueStore.createIndex('status', 'status', { unique: false });
-        syncQueueStore.createIndex('created_at', 'created_at', { unique: false });
-        syncQueueStore.createIndex('table_name', 'table_name', { unique: false });
-        console.log('✅ Created store: syncQueue');
+        if (!db.objectStoreNames.contains('syncQueue')) {
+          const syncQueueStore = db.createObjectStore('syncQueue', { keyPath: 'id', autoIncrement: true });
+          syncQueueStore.createIndex('status', 'status', { unique: false });
+          syncQueueStore.createIndex('created_at', 'created_at', { unique: false });
+          syncQueueStore.createIndex('table_name', 'table_name', { unique: false });
+          console.log('✅ Created store: syncQueue');
+        }
         
         // 6. Store master_kelas
         if (!db.objectStoreNames.contains('master_kelas')) {
@@ -93,9 +105,11 @@ class LocalDB {
         }
         
         // 7. Store gambar_produk (OFFLINE IMAGES)
-        const gambarStore = db.createObjectStore('gambar_produk', { keyPath: 'id' });
-        gambarStore.createIndex('updated_at', 'updated_at', { unique: false });
-        console.log('✅ Created store: gambar_produk');
+        if (!db.objectStoreNames.contains('gambar_produk')) {
+          const gambarStore = db.createObjectStore('gambar_produk', { keyPath: 'id' });
+          gambarStore.createIndex('updated_at', 'updated_at', { unique: false });
+          console.log('✅ Created store: gambar_produk');
+        }
         
         // 8. Store syncLog (tambahan untuk logging)
         if (!db.objectStoreNames.contains('syncLog')) {
