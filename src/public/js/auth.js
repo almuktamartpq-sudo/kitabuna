@@ -499,11 +499,6 @@ async function logout() {
     console.warn('Sign out error:', e);
   }
   
-  // Kirim pesan ke Service Worker untuk clear cache
-  if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-    navigator.serviceWorker.controller.postMessage({ type: 'CLEAR_CACHE' });
-  }
-  
   // Hapus semua data lokal
   localStorage.removeItem(STORAGE_KEYS.USER_ID);
   localStorage.removeItem(STORAGE_KEYS.USER_EMAIL);
