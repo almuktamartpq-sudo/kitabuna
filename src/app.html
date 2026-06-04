@@ -202,21 +202,7 @@ if (document.readyState === 'loading') {
   }
 
   function dapatkanTanggalHijriah(date) {
-    // Coba Intl dulu
-    try {
-      var opsi = { day: 'numeric', month: 'long', year: 'numeric' };
-      var formatter = new Intl.DateTimeFormat('id-ID-u-ca-islamic-umalqura', opsi);
-      var result = formatter.format(date);
-      // Cek apakah bulan masih Masehi (Desember, November, dll)
-      var bulanMasehi = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
-      var isMasehi = false;
-      for (var i = 0; i < bulanMasehi.length; i++) {
-        if (result.indexOf(bulanMasehi[i]) !== -1) { isMasehi = true; break; }
-      }
-      if (!isMasehi) return result; // Intl berhasil, gunakan hasilnya
-    } catch(e) {}
-    
-    // Fallback: konversi manual
+    // Selalu pakai konversi manual agar konsisten di semua device
     var h = gregorianToHijriah(date.getFullYear(), date.getMonth() + 1, date.getDate());
     return h.day + ' ' + bulanHijriah[h.month - 1] + ' ' + h.year;
   }
