@@ -1079,22 +1079,18 @@ async function generateLaporan() {
       }
     }
     
-    // Format tanggal WIB yang benar (gunakan waktu lokal komputer)
+    // Format tanggal ringkas: dd/mm/yy | HH:MM
     function formatWIBDate(dateString) {
       if (!dateString) return '-';
       try {
         var date = new Date(dateString);
         if (isNaN(date.getTime())) return dateString;
-        
-        // Format lokal Indonesia (otomatis sesuai zona waktu komputer)
-        return date.toLocaleString('id-ID', {
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit'
-        });
+        var dd = String(date.getDate()).padStart(2, '0');
+        var mm = String(date.getMonth() + 1).padStart(2, '0');
+        var yy = String(date.getFullYear()).slice(-2);
+        var hh = String(date.getHours()).padStart(2, '0');
+        var mi = String(date.getMinutes()).padStart(2, '0');
+        return dd + '/' + mm + '/' + yy + ' | ' + hh + ':' + mi;
       } catch(e) {
         return dateString;
       }
@@ -1298,14 +1294,13 @@ async function showDetailTransaksi(id) {
       totalItems += detail[d].qty || 0;
     }
     
-    var tanggal = new Date(transaksi.created_at).toLocaleString('id-ID', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit'
-    });
+    var dateObj = new Date(transaksi.created_at);
+    var dd = String(dateObj.getDate()).padStart(2, '0');
+    var mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+    var yy = String(dateObj.getFullYear()).slice(-2);
+    var hh = String(dateObj.getHours()).padStart(2, '0');
+    var mi = String(dateObj.getMinutes()).padStart(2, '0');
+    var tanggal = dd + '/' + mm + '/' + yy + ' | ' + hh + ':' + mi;
     
     var userName = namaKasir;
     var namaPembeli = transaksi.nama_pembeli || 'Pelanggan';
