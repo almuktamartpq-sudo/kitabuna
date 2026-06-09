@@ -1,5 +1,10 @@
 // js/app-offline.js - FULL VERSION DENGAN FIX KELAS
 
+// Format angka dengan titik ribuan (tanpa Rp)
+function fmtAngka(n) {
+  return Number(n || 0).toLocaleString('id-ID');
+}
+
 const offlineKelasGradients = [
   'linear-gradient(135deg, #1a5c3e, #d4af37)',
   'linear-gradient(135deg, #2d8659, #b99f3b)',
@@ -19,7 +24,7 @@ function getOfflineKelasGradient(index) {
 async function loadDashboard() {
   setActiveMenu('dashboard');
   var titleEl = document.getElementById("pageTitle");
-  if (titleEl) titleEl.innerText = "Dashboard";
+  if (titleEl) titleEl.innerHTML = '<i class="fas fa-chart-pie"></i> Dashboard';
   var contentEl = document.getElementById("content");
   if (contentEl) {
     contentEl.innerHTML = '<div class="card"><div class="loading-spinner"><i class="fas fa-spinner fa-spin"></i><p>Memuat data dashboard...</p></div></div>';
@@ -92,7 +97,7 @@ function renderCharts(transaksi) {
 // ==================== PRODUK ====================
 async function loadProdukPage() {
   setActiveMenu('produk');
-  document.getElementById("pageTitle").innerText = "Manajemen Produk";
+  document.getElementById("pageTitle").innerHTML = '<i class="fas fa-box"></i> Manajemen Produk';
   
   // Load kelas map terlebih dahulu
   await refreshKelasData();
@@ -481,7 +486,7 @@ var cart = [];
 async function loadKasir() {
   document.body.classList.add("page-kasir");
   setActiveMenu('kasir');
-  document.getElementById("pageTitle").innerText = "Kasir";
+  document.getElementById("pageTitle").innerHTML = '<i class="fas fa-shopping-cart"></i> Kasir';
   
   // Refresh kelas map terlebih dahulu
   await refreshKelasData();
@@ -797,7 +802,7 @@ function filterProduk() {
   for (var i = 0; i < cards.length; i++) {
     var card = cards[i];
     var nama = card.querySelector("h4") ? card.querySelector("h4").innerText.toLowerCase() : "";
-    card.style.display = nama.includes(keyword) ? "block" : "none";
+    card.style.setProperty("display", nama.includes(keyword) ? "flex" : "none", "important");
   }
 }
 
@@ -914,11 +919,6 @@ async function loadLaporan() {
   
   document.getElementById("content").innerHTML = `
     <div class="laporan-card">
-      <div class="laporan-header">
-        <h2><i class="fas fa-chart-line"></i> Laporan Penjualan</h2>
-        <p class="laporan-subtitle">Analisis dan rekapan transaksi penjualan</p>
-      </div>
-      
       <div class="filter-section">
         <div class="filter-group">
           <label><i class="fas fa-calendar-alt"></i> Tanggal Mulai</label>
@@ -1146,8 +1146,6 @@ async function generateLaporan() {
                 <th>Kasir</th>
                 <th>Nama Pembeli</th>
                 <th>Total</th>
-                <th>Laba</th>
-                <th>Item</th>
                 <th>Aksi</th>
               </tr>
             </thead>
@@ -1156,12 +1154,6 @@ async function generateLaporan() {
     
     for (var j = 0; j < transaksi.length; j++) {
       var tr = transaksi[j];
-      var itemCount = 0;
-      if (tr.detail_transaksi) {
-        for (var d2 = 0; d2 < tr.detail_transaksi.length; d2++) {
-          itemCount += (tr.detail_transaksi[d2].qty || 0);
-        }
-      }
       
       var tglFormatted = formatWIBDate(tr.created_at);
       var namaPembeli = tr.nama_pembeli || '-';
@@ -1173,9 +1165,7 @@ async function generateLaporan() {
           <td class="date-cell">${tglFormatted}</td>
           <td class="customer-cell"><span class="customer-name">${escapeHtml(namaKasir)}</span></td>
           <td class="customer-cell"><span class="customer-name">${escapeHtml(namaPembeli)}</span></td>
-          <td class="text-right amount">Rp ${Number(tr.total).toLocaleString()}</td>
-          <td class="text-right profit">Rp ${Number(tr.total_laba).toLocaleString()}</td>
-          <td class="text-center"><span class="item-badge">${itemCount}</span></td>
+          <td class="text-right amount">${fmtAngka(tr.total)}</td>
           <td class="text-center">
             <button class="action-btn" onclick="showDetailTransaksi('${tr.id}')">
               <i class="fas fa-receipt"></i> Nota
@@ -1307,26 +1297,27 @@ async function showDetailTransaksi(id) {
     // Prepare share text for WhatsApp immediately and cache it to avoid async blocking later
     try {
       window.preparedNotaTexts = window.preparedNotaTexts || {};
-      var shareText = `🏫 *MADIN AL-MUKTAMAR*\n`;
-      shareText += `📍 *NOTA PENJUALAN*\n`;
-      shareText += `══════════════════════\n`;
-      shareText += `🆔 No: #${transaksi.id.slice(0,8)}\n`;
-      shareText += `📅 Tanggal: ${tanggal}\n`;
-      shareText += `👤 Pembeli: ${namaPembeli}\n`;
-      shareText += `──────────────────────\n\n`;
+      var shareText = '';
+      shareText += 'KITABUNA AL-MUKTAMAR\n';
+      shareText += 'NOTA PENJUALAN\n';
+      shareText += '--------------------------------\n';
+      shareText += 'No : #' + transaksi.id.slice(0,8) + '\n';
+      shareText += 'Tgl: ' + tanggal + '\n';
+      shareText += 'Pembeli: ' + namaPembeli + '\n';
+      shareText += '--------------------------------\n';
       for (var sd = 0; sd < detail.length; sd++) {
         var it = detail[sd];
-        shareText += `📦 *${it.produk?.nama || 'Produk'}*\n`;
-        shareText += `   ${it.qty} x Rp ${Number(it.harga).toLocaleString()}\n`;
-        shareText += `   ➤ Rp ${Number(it.subtotal).toLocaleString()}\n\n`;
+        shareText += (it.produk?.nama || 'Produk') + '\n';
+        shareText += it.qty + ' x ' + fmtAngka(it.harga);
+        shareText += ' = ' + fmtAngka(it.subtotal) + '\n';
       }
       var tot = detail.reduce(function(acc, cur){ return acc + Number(cur.subtotal || 0); }, 0);
-      shareText += `──────────────────────\n`;
-      shareText += `💰 *TOTAL: Rp ${tot.toLocaleString()}*\n`;
-      shareText += `══════════════════════\n\n`;
-      shareText += `🙏 Terima kasih atas kunjungan Anda!\n`;
-      shareText += `📞 Info: 0812-3456-7890\n`;
-      shareText += `${new Date().toLocaleString('id-ID')}`;
+      shareText += '--------------------------------\n';
+      shareText += 'TOTAL : ' + fmtAngka(tot) + '\n';
+      shareText += '--------------------------------\n';
+      shareText += 'Kasir : ' + userName + '\n';
+      shareText += 'Terima kasih.\n';
+      shareText += 'CS: 0858-5160-0898';
       window.preparedNotaTexts[transaksi.id] = shareText;
     } catch (e) {
       console.error('Prepare share text error:', e);
@@ -1401,8 +1392,8 @@ async function showDetailTransaksi(id) {
         <tr>
           <td>${escapeHtml(item.produk?.nama || 'Produk')}</td>
           <td class="text-center">${item.qty}</td>
-          <td class="text-right">Rp ${Number(item.harga).toLocaleString()}</td>
-          <td class="text-right">Rp ${Number(item.subtotal).toLocaleString()}</td>
+          <td class="text-right">${fmtAngka(item.harga)}</td>
+          <td class="text-right">${fmtAngka(item.subtotal)}</td>
         </tr>
       `;
     }
@@ -1412,7 +1403,7 @@ async function showDetailTransaksi(id) {
                 <tfoot>
                   <tr class="total-row">
                     <td colspan="3" class="text-right"><strong>TOTAL</strong></td>
-                    <td class="text-right total-amount">Rp ${totalBelanja.toLocaleString()}</td>
+                    <td class="text-right total-amount">${fmtAngka(totalBelanja)}</td>
                   </tr>
                 </tfoot>
               </table>
@@ -1601,8 +1592,8 @@ async function printNota(id) {
         <tr>
           <td>${escapeHtml(item.produk?.nama || 'Produk')}</td>
           <td class="text-center">${item.qty}</td>
-          <td class="text-right">Rp ${Number(item.harga).toLocaleString()}</td>
-          <td class="text-right">Rp ${Number(item.subtotal).toLocaleString()}</td>
+          <td class="text-right">${fmtAngka(item.harga)}</td>
+          <td class="text-right">${fmtAngka(item.subtotal)}</td>
         </tr>
       `;
     }
@@ -1612,7 +1603,7 @@ async function printNota(id) {
             <tfoot>
               <tr class="total-row">
                 <td colspan="3" class="text-right"><strong>TOTAL</strong></td>
-                <td class="text-right"><strong>Rp ${totalBelanja.toLocaleString()}</strong></td>
+                <td class="text-right"><strong>${fmtAngka(totalBelanja)}</strong></td>
               </tr>
             </tfoot>
           </table>
@@ -1686,25 +1677,27 @@ async function shareCustomerNota(id) {
         year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
       });
 
-      text = `🏫 *MADIN AL-MUKTAMAR*\n`;
-      text += `📍 *NOTA PENJUALAN*\n`;
-      text += `══════════════════════\n`;
-      text += `🆔 No: #${transaksi.id.slice(0,8)}\n`;
-      text += `📅 Tanggal: ${tanggal}\n`;
-      text += `👤 Pembeli: ${namaPembeli}\n`;
-      text += `──────────────────────\n\n`;
+      var userName = 'Kasir';
+      text = '';
+      text += 'KITABUNA AL-MUKTAMAR\n';
+      text += 'NOTA PENJUALAN\n';
+      text += '--------------------------------\n';
+      text += 'No : #' + transaksi.id.slice(0,8) + '\n';
+      text += 'Tgl: ' + tanggal + '\n';
+      text += 'Pembeli: ' + namaPembeli + '\n';
+      text += '--------------------------------\n';
       for (var d = 0; d < detail.length; d++) {
-        text += `📦 *${detail[d].produk?.nama || 'Produk'}*\n`;
-        text += `   ${detail[d].qty} x Rp ${Number(detail[d].harga).toLocaleString()}\n`;
-        text += `   ➤ Rp ${Number(detail[d].subtotal).toLocaleString()}\n\n`;
+        text += (detail[d].produk?.nama || 'Produk') + '\n';
+        text += detail[d].qty + ' x ' + fmtAngka(detail[d].harga);
+        text += ' = ' + fmtAngka(detail[d].subtotal) + '\n';
       }
       var total = detail.reduce(function(acc, cur){ return acc + Number(cur.subtotal || 0); }, 0);
-      text += `──────────────────────\n`;
-      text += `💰 *TOTAL: Rp ${total.toLocaleString()}*\n`;
-      text += `══════════════════════\n\n`;
-      text += `🙏 Terima kasih atas kunjungan Anda!\n`;
-      text += `📞 Info: 0812-3456-7890\n`;
-      text += `${new Date().toLocaleString('id-ID')}`;
+      text += '--------------------------------\n';
+      text += 'TOTAL : ' + fmtAngka(total) + '\n';
+      text += '--------------------------------\n';
+      text += 'Kasir : ' + userName + '\n';
+      text += 'Terima kasih.\n';
+      text += 'CS: 0858-5160-0898';
     } else {
       Swal.close();
     }
@@ -2007,10 +2000,10 @@ async function exportLaporan() {
             tgl,
             namaProduk,
             qty.toString(),
-            'Rp ' + hargaModal.toLocaleString(),
-            'Rp ' + hargaJual.toLocaleString(),
-            'Rp ' + labaItem.toLocaleString(),
-            'Rp ' + totalJual.toLocaleString()
+            fmtAngka(hargaModal),
+          fmtAngka(hargaJual),
+          fmtAngka(labaItem),
+          fmtAngka(totalJual)
           ]);
         }
       }
@@ -2090,9 +2083,9 @@ async function exportLaporan() {
       var ringkasanData = [
         { label: 'Total Transaksi', value: transaksi.length + ' transaksi' },
         { label: 'Total Item Terjual', value: totalItems + ' item' },
-        { label: 'Total Modal (HPP)', value: 'Rp ' + totalModalSemua.toLocaleString() },
-        { label: 'Total Omzet', value: 'Rp ' + totalOmzet.toLocaleString() },
-        { label: 'Total Laba', value: 'Rp ' + totalLaba.toLocaleString() },
+        { label: 'Total Modal (HPP)', value: fmtAngka(totalModalSemua) },
+        { label: 'Total Omzet', value: fmtAngka(totalOmzet) },
+        { label: 'Total Laba', value: fmtAngka(totalLaba) },
         { label: 'Margin Rata-rata', value: marginRata + ' %' }
       ];
       
@@ -2185,8 +2178,7 @@ async function loadLaporanMaster() {
   var marginRata = totalJual > 0 ? ((totalLaba / totalJual) * 100).toFixed(1) : 0;
   
   var html = '<div class="card">' +
-    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;flex-wrap:wrap;gap:10px;">' +
-      '<h2 style="margin:0;"><i class="fas fa-database"></i> Laporan Master Data</h2>' +
+    '<div style="display:flex;justify-content:flex-end;margin-bottom:15px;flex-wrap:wrap;gap:10px;">' +
       '<button class="btn btn-success" onclick="exportMasterDataPDF()" style="padding:8px 16px;font-size:0.85rem;">' +
         '<i class="fas fa-file-pdf"></i> Export PDF</button>' +
     '</div>' +
@@ -2268,20 +2260,20 @@ async function loadLaporanMaster() {
       '<td class="text-center">' + (j+1) + '</td>' +
       '<td><strong>' + escapeHtml(pr.nama) + '</strong></td>' +
       '<td class="text-center"><span  style="padding:4px 8px;border-radius:12px;font-size:11px;">' + escapeHtml(namaKelas) + '</span></td>' +
-      '<td class="text-right">Rp ' + (pr.harga_beli || 0).toLocaleString() + '</td>' +
-      '<td class="text-right">Rp ' + (pr.harga_jual || 0).toLocaleString() + '</td>' +
+      '<td class="text-right">' + fmtAngka(pr.harga_beli || 0) + '</td>' +
+      '<td class="text-right">' + fmtAngka(pr.harga_jual || 0) + '</td>' +
       '<td class="text-center"><span class="stok-badge ' + (pr.stok > 10 ? 'badge-success' : (pr.stok > 0 ? 'badge-warning' : 'badge-danger')) + '">' + (pr.stok || 0) + '</span></td>' +
-      '<td class="text-right">Rp ' + totalModalItem.toLocaleString() + '</td>' +
-      '<td class="text-right">Rp ' + totalJualItem.toLocaleString() + '</td>' +
-      '<td class="text-right ' + marginClass + '"><strong>Rp ' + labaItem.toLocaleString() + '</strong></td>' +
+      '<td class="text-right">' + fmtAngka(totalModalItem) + '</td>' +
+      '<td class="text-right">' + fmtAngka(totalJualItem) + '</td>' +
+      '<td class="text-right ' + marginClass + '"><strong>' + fmtAngka(labaItem) + '</strong></td>' +
     '</tr>';
   }
   
   html += '</tbody><tfoot><tr class="total-row">' +
     '<td colspan="6"><strong>TOTAL KESELURUHAN</strong></td>' +
-    '<td class="text-right"><strong>Rp ' + totalModal.toLocaleString() + '</strong></td>' +
-    '<td class="text-right"><strong>Rp ' + totalJual.toLocaleString() + '</strong></td>' +
-    '<td class="text-right"><strong>Rp ' + totalLaba.toLocaleString() + '</strong></td>' +
+    '<td class="text-right"><strong>' + fmtAngka(totalModal) + '</strong></td>' +
+    '<td class="text-right"><strong>' + fmtAngka(totalJual) + '</strong></td>' +
+    '<td class="text-right"><strong>' + fmtAngka(totalLaba) + '</strong></td>' +
   '</tr></tfoot></table></div></div>';
   
   document.getElementById("content").innerHTML = html;
@@ -2453,12 +2445,12 @@ async function exportMasterDataPDF() {
         (j + 1).toString(),
         p.nama || '-',
         namaKelas,
-        'Rp ' + (p.harga_beli || 0).toLocaleString(),
-        'Rp ' + (p.harga_jual || 0).toLocaleString(),
+        fmtAngka(p.harga_beli || 0),
+        fmtAngka(p.harga_jual || 0),
         (p.stok || 0).toString(),
-        'Rp ' + totalModalItem.toLocaleString(),
-        'Rp ' + totalJualItem.toLocaleString(),
-        'Rp ' + labaItem.toLocaleString()
+        fmtAngka(totalModalItem),
+        fmtAngka(totalJualItem),
+        fmtAngka(labaItem)
       ]);
     }
     
@@ -2543,9 +2535,9 @@ async function exportMasterDataPDF() {
     var ringkasanData = [
       { label: 'Total Produk', value: produk.length + ' item' },
       { label: 'Total Stok', value: totalStok + ' item' },
-      { label: 'Total Nilai Modal', value: 'Rp ' + totalModal.toLocaleString() },
-      { label: 'Total Nilai Jual', value: 'Rp ' + totalJual.toLocaleString() },
-      { label: 'Potensi Laba', value: 'Rp ' + totalLaba.toLocaleString() },
+      { label: 'Total Nilai Modal', value: fmtAngka(totalModal) },
+      { label: 'Total Nilai Jual', value: fmtAngka(totalJual) },
+      { label: 'Potensi Laba', value: fmtAngka(totalLaba) },
       { label: 'Margin Rata-rata', value: marginRata + ' %' }
     ];
     
@@ -2642,8 +2634,7 @@ async function loadMasterKelasPage() {
   }
   
   var html = '<div class="card">' +
-    '<div class="master-kelas-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">' +
-      '<h2><i class="fas fa-layer-group" "></i> Master Kelas</h2>' +
+    '<div class="master-kelas-header" style="display:flex;justify-content:flex-end;align-items:center;margin-bottom:20px;">' +
       (window.currentRole === 'admin' ? '<button class="btn btn-success" onclick="showFormKelas()"><i class="fas fa-plus"></i> Tambah Kelas</button>' : '') +
     '</div>' +
     '<div class="stats-kelas" style="display:flex;gap:20px;margin:20px 0;padding:15px;background:#f8f9fa;border-radius:12px;">' +

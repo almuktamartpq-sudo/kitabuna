@@ -259,7 +259,7 @@ async function lihatProdukByKelas(kelasId, namaKelas) {
     var p = produk[i];
     html += '<div style="display:flex; align-items:center; gap:10px; padding:10px; border-bottom:1px solid #eee;">';
     html += '<img src="' + (p.gambar_url || 'https://via.placeholder.com/40') + '" style="width:40px; height:40px; object-fit:cover; border-radius:8px;" onerror="this.src=\'https://via.placeholder.com/40\'">';
-    html += '<div style="flex:1;"><strong>' + escapeHtml(p.nama) + '</strong><br><small>Harga: Rp ' + (p.harga_jual || 0).toLocaleString() + ' | Stok: ' + (p.stok || 0) + '</small></div>';
+    html += '<div style="flex:1;"><strong>' + escapeHtml(p.nama) + '</strong><br><small>Harga: ' + Number(p.harga_jual || 0).toLocaleString('id-ID') + ' | Stok: ' + (p.stok || 0) + '</small></div>';
     html += '<button class="btn btn-primary btn-sm" onclick="window.location.href=\'#\'; setTimeout(function(){ loadProdukPage(); editProduk(\'' + p.id + '\'); }, 100);" style="padding:5px 10px;">Edit</button>';
     html += '</div>';
   }

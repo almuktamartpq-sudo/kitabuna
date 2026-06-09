@@ -28,7 +28,7 @@
 <div class="app-container">
   <div class="mobile-header">
     <button class="menu-toggle" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
-    <div class="mobile-logo"><img src="https://i.imgur.com/2mDfHEi.png/40x40?text=Logo" alt="Logo"><span>Kitab Madin</span></div>
+    <div class="mobile-logo"><img src="https://i.imgur.com/2mDfHEi.png/40x40?text=Logo" alt="Logo"><span>Kitabuna</span></div>
     <div class="user-profile-mobile" onclick="toggleUserMenu()"><i class="fas fa-user-circle"></i></div>
   </div>
 
@@ -90,6 +90,7 @@
 <script src="js/supabase.js"></script>
 <script src="js/device.js"></script>
 <script src="js/auth.js"></script>
+<script src="js/umm-alqura.js"></script>
 <script src="js/db-local.js"></script>
 <script src="js/offline-core.js"></script>
 <script src="js/master-kelas.js"></script>
@@ -184,26 +185,16 @@ if (document.readyState === 'loading') {
     'Ramadhan', 'Syawal', 'Dzulqodah', 'Dzulhijjah'
   ];
 
-  // Konversi Gregorian ke Hijriah (Algoritma Tabular)
+  // Konversi Gregorian ke Hijriah pakai tabel Umm al-Qura resmi
   function gregorianToHijriah(year, month, day) {
-    var jd = Math.floor((1461 * (year + 4800 + Math.floor((month - 14) / 12))) / 4) +
-             Math.floor((367 * (month - 2 - 12 * Math.floor((month - 14) / 12))) / 12) -
-             Math.floor((3 * Math.floor((year + 4900 + Math.floor((month - 14) / 12)) / 100)) / 4) +
-             day - 32075;
-    var l = jd - 1948440 + 10632;
-    var n = Math.floor((l - 1) / 10631);
-    l = l - 10631 * n + 354;
-    var j = Math.floor((10985 - l) / 5316) * Math.floor((50 * l) / 17719) + Math.floor(l / 5670) * Math.floor((43 * l) / 15238);
-    l = l - Math.floor((30 - j) / 15) * Math.floor((17719 * j) / 50) - Math.floor(j / 16) * Math.floor((15238 * j) / 43) + 29;
-    var m = Math.floor((24 * l) / 709);
-    var d = l - Math.floor((709 * m) / 24);
-    var y = 30 * n + j - 30;
-    return { year: y, month: m, day: d };
+    // Delegasi ke UmmAlQura() dari umm-alqura.js
+    var h = UmmAlQura(new Date(year, month - 1, day));
+    return { year: h.year, month: h.month, day: h.day };
   }
 
   function dapatkanTanggalHijriah(date) {
-    // Selalu pakai konversi manual agar konsisten di semua device
-    var h = gregorianToHijriah(date.getFullYear(), date.getMonth() + 1, date.getDate());
+    // Selalu pakai Umm al-Qura agar konsisten di semua device
+    var h = UmmAlQura(date);
     return h.day + ' ' + bulanHijriah[h.month - 1] + ' ' + h.year;
   }
 

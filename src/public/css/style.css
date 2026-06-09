@@ -543,7 +543,7 @@ body {
     width: 100%;
   }
   .location-marquee {
-    max-width: 180px;
+    max-width: 220px;
   }
 }
 
@@ -553,7 +553,7 @@ body {
     flex-wrap: wrap;
   }
   .location-marquee {
-    max-width: 150px;
+    max-width: 200px;
   }
 }
 
